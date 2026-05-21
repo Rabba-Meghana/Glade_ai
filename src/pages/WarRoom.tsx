@@ -10,8 +10,8 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
   retain:     { label: 'Retained',    color: '#7c3aed', bg: '#ede9fe' },
   collecting: { label: 'Collecting',  color: '#b45309', bg: '#fef3c7' },
   drafting:   { label: 'Drafting',    color: '#0369a1', bg: '#dbeafe' },
-  review:     { label: 'Review',      color: '#157040', bg: '#dcfce7' },
-  filed:      { label: 'Filed',       color: '#166534', bg: '#bbf7d0' },
+  review:     { label: 'Review',      color: '#5F4F86', bg: '#ede8f8' },
+  filed:      { label: 'Filed',       color: '#4a3d6e', bg: '#ddd6f5' },
 }
 
 function daysUntil(d: string) {
@@ -21,7 +21,7 @@ function daysUntil(d: string) {
 function StatCard({ label, value, icon: Icon, color, bg }: any) {
   return (
     <div style={{
-      background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12,
+      background: '#fff', border: '1px solid #eaeaea', borderRadius: 12,
       padding: '14px 16px',
     }}>
       <div style={{
@@ -30,7 +30,7 @@ function StatCard({ label, value, icon: Icon, color, bg }: any) {
       }}>
         <Icon size={14} color={color} />
       </div>
-      <div style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 500, color: '#111', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontFamily: 'Onest, sans-serif', fontSize: 22, fontWeight: 500, color: '#111', lineHeight: 1 }}>{value}</div>
       <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{label}</div>
     </div>
   )
@@ -39,7 +39,7 @@ function StatCard({ label, value, icon: Icon, color, bg }: any) {
 function CaseCard({ c, onClick }: { c: Case; onClick: () => void }) {
   const days = daysUntil(c.filingDeadline)
   const st = STATUS_CFG[c.status]
-  const healthColor = c.healthScore >= 80 ? '#22c55e' : c.healthScore >= 50 ? '#f59e0b' : '#ef4444'
+  const healthColor = c.healthScore >= 80 ? '#7c6fb5' : c.healthScore >= 50 ? '#f59e0b' : '#ef4444'
   const isCritical = c.urgency === 'critical'
 
   return (
@@ -48,8 +48,8 @@ function CaseCard({ c, onClick }: { c: Case; onClick: () => void }) {
       onClick={onClick}
       style={{
         background: '#fff',
-        border: `1px solid ${isCritical ? '#fca5a5' : '#e8e8e5'}`,
-        borderLeft: `3px solid ${isCritical ? '#ef4444' : c.urgency === 'high' ? '#f59e0b' : '#e8e8e5'}`,
+        border: `1px solid ${isCritical ? '#fca5a5' : '#eaeaea'}`,
+        borderLeft: `3px solid ${isCritical ? '#ef4444' : c.urgency === 'high' ? '#f59e0b' : '#eaeaea'}`,
         borderRadius: 12,
         padding: '16px',
         cursor: 'pointer',
@@ -61,13 +61,13 @@ function CaseCard({ c, onClick }: { c: Case; onClick: () => void }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div>
           <div style={{ fontWeight: 500, fontSize: 14, color: '#111' }}>{c.clientName}</div>
-          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#999', marginTop: 2 }}>{c.caseNumber}</div>
+          <div style={{ fontFamily: 'Geist Mono, monospace', fontSize: 11, color: '#999', marginTop: 2 }}>{c.caseNumber}</div>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 500, background: st.bg, color: st.color }}>
             {st.label}
           </span>
-          <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 6, background: '#f0faf4', color: '#157040', fontWeight: 500 }}>
+          <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 6, background: '#f5f3ff', color: '#5F4F86', fontWeight: 500 }}>
             Ch.{c.chapter}
           </span>
         </div>
@@ -75,7 +75,7 @@ function CaseCard({ c, onClick }: { c: Case; onClick: () => void }) {
 
       {/* Health bar */}
       <div style={{ marginBottom: 10 }}>
-        <div style={{ height: 4, borderRadius: 2, background: '#f0f0ee', overflow: 'hidden' }}>
+        <div style={{ height: 4, borderRadius: 2, background: '#f0f3ff', overflow: 'hidden' }}>
           <div style={{ height: '100%', borderRadius: 2, background: healthColor, width: `${c.healthScore}%`, transition: 'width 0.6s ease' }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
@@ -88,7 +88,7 @@ function CaseCard({ c, onClick }: { c: Case; onClick: () => void }) {
           </div>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 4, fontSize: 12,
-            color: c.status === 'filed' ? '#157040' : days <= 7 ? '#ef4444' : days <= 14 ? '#f59e0b' : '#666',
+            color: c.status === 'filed' ? '#5F4F86' : days <= 7 ? '#ef4444' : days <= 14 ? '#f59e0b' : '#666',
           }}>
             <Clock size={11} />
             {c.status === 'filed' ? 'Filed' : days <= 0 ? 'Overdue' : `${days}d left`}
@@ -116,7 +116,7 @@ function CaseCard({ c, onClick }: { c: Case; onClick: () => void }) {
             {c.documents.length} docs
           </span>
           {c.lastAgentRun && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#157040' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#5F4F86' }}>
               <Brain size={11} />
               AI run
             </span>
@@ -155,7 +155,7 @@ export default function WarRoom() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 500, color: '#111', letterSpacing: '-0.02em', margin: 0 }}>
+          <h1 style={{ fontFamily: 'Onest, sans-serif', fontSize: 22, fontWeight: 500, color: '#111', letterSpacing: '-0.02em', margin: 0 }}>
             Case War Room
           </h1>
           <p style={{ fontSize: 13, color: '#888', margin: '4px 0 0' }}>
@@ -164,22 +164,22 @@ export default function WarRoom() {
         </div>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6,
-          fontSize: 12, color: '#157040',
-          background: '#e6f5ed', padding: '5px 12px', borderRadius: 20,
-          fontFamily: 'DM Mono, monospace',
+          fontSize: 12, color: '#5F4F86',
+          background: '#ede8f8', padding: '5px 12px', borderRadius: 20,
+          fontFamily: 'Geist Mono, monospace',
         }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s infinite' }} />
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#7c6fb5', animation: 'pulse 2s infinite' }} />
           PARALEX agents active
         </div>
       </div>
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 24 }}>
-        <StatCard label="Active Cases"   value={stats.active}      icon={Users}        color="#157040" bg="#e6f5ed" />
+        <StatCard label="Active Cases"   value={stats.active}      icon={Users}        color="#5F4F86" bg="#ede8f8" />
         <StatCard label="Critical"       value={stats.critical}    icon={AlertTriangle} color="#dc2626" bg="#fee2e2" />
         <StatCard label="Missing Docs"   value={stats.missingDocs} icon={FileText}      color="#b45309" bg="#fef3c7" />
         <StatCard label="Avg Health"     value={`${stats.avgHealth}%`} icon={TrendingUp} color="#0369a1" bg="#dbeafe" />
-        <StatCard label="Filed"          value={stats.filed}       icon={CheckCircle2}  color="#166534" bg="#bbf7d0" />
+        <StatCard label="Filed"          value={stats.filed}       icon={CheckCircle2}  color="#4a3d6e" bg="#ddd6f5" />
         <StatCard label="Hrs Saved/Mo"   value={stats.hrsSaved}    icon={Zap}           color="#7c3aed" bg="#ede9fe" />
       </div>
 
@@ -192,9 +192,9 @@ export default function WarRoom() {
             placeholder="Search cases..."
             style={{
               width: '100%', padding: '8px 12px 8px 32px',
-              border: '1px solid #e8e8e5', borderRadius: 8,
+              border: '1px solid #eaeaea', borderRadius: 8,
               fontSize: 13, color: '#111', background: '#fff', outline: 'none',
-              fontFamily: 'DM Sans, sans-serif',
+              fontFamily: 'Onest, Inter, sans-serif',
             }}
           />
         </div>
@@ -207,10 +207,10 @@ export default function WarRoom() {
           ].map(({ k, l }) => (
             <button key={k} onClick={() => setFilter(k)} style={{
               padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500,
-              cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'DM Sans, sans-serif',
-              background: filter === k ? '#157040' : '#fff',
+              cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'Onest, Inter, sans-serif',
+              background: filter === k ? '#5F4F86' : '#fff',
               color: filter === k ? '#fff' : '#555',
-              border: `1px solid ${filter === k ? '#157040' : '#e8e8e5'}`,
+              border: `1px solid ${filter === k ? '#5F4F86' : '#eaeaea'}`,
             }}>
               {l}
             </button>

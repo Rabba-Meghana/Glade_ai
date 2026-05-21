@@ -4,36 +4,25 @@ export default {
     extend: {
       colors: {
         brand: {
-          50:  '#f0faf4',
-          100: '#d6f2e0',
-          200: '#a8e3bf',
-          300: '#6dcc96',
-          400: '#34b06b',
-          500: '#1a8c4e',
-          600: '#157040',
-          700: '#0f5530',
-          800: '#0a3d22',
-          900: '#062716',
+          50:  '#f5f3ff',
+          100: '#ede8f8',
+          200: '#ddd6f5',
+          300: '#c4b8ea',
+          400: '#a593dc',
+          500: '#7c6fb5',
+          600: '#5F4F86',
+          700: '#4a3d6e',
+          800: '#3d3060',
+          900: '#2e2449',
         },
-        surface: '#fafaf9',
+        surface: '#f0f3ff',
         card: '#ffffff',
       },
       fontFamily: {
-        sans: ['DM Sans', 'system-ui', 'sans-serif'],
-        mono: ['DM Mono', 'monospace'],
-        display: ['Fraunces', 'Georgia', 'serif'],
+        sans:    ['Onest', 'Inter', 'system-ui', 'sans-serif'],
+        mono:    ['Geist Mono', 'Courier New', 'monospace'],
+        display: ['Onest', 'Inter', 'sans-serif'],
       },
-      animation: {
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'slide-in': 'slideIn 0.3s ease-out',
-        'fade-in': 'fadeIn 0.4s ease-out',
-        'stream': 'stream 0.1s ease-out',
-      },
-      keyframes: {
-        slideIn: { from: { transform: 'translateY(8px)', opacity: '0' }, to: { transform: 'translateY(0)', opacity: '1' } },
-        fadeIn: { from: { opacity: '0' }, to: { opacity: '1' } },
-        stream: { from: { opacity: '0.4' }, to: { opacity: '1' } },
-      }
     }
   },
   plugins: []

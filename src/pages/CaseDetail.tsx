@@ -21,18 +21,18 @@ export default function CaseDetail() {
       <button onClick={() => navigate('/war-room')} style={{
         display: 'flex', alignItems: 'center', gap: 6,
         fontSize: 13, color: '#666', background: 'none', border: 'none',
-        cursor: 'pointer', padding: 0, marginBottom: 20, fontFamily: 'DM Sans, sans-serif',
+        cursor: 'pointer', padding: 0, marginBottom: 20, fontFamily: 'Onest, Inter, sans-serif',
       }}>
         <ArrowLeft size={14} />
         Back to War Room
       </button>
 
       {/* Hero card */}
-      <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: 20, marginBottom: 16 }}>
+      <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 20, marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 500, color: '#111', margin: 0, letterSpacing: '-0.02em' }}>
+              <h1 style={{ fontFamily: 'Onest, sans-serif', fontSize: 20, fontWeight: 500, color: '#111', margin: 0, letterSpacing: '-0.02em' }}>
                 {c.clientName}
               </h1>
               {c.urgency === 'critical' && (
@@ -41,15 +41,15 @@ export default function CaseDetail() {
                 </span>
               )}
             </div>
-            <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: '#999' }}>
+            <div style={{ fontFamily: 'Geist Mono, monospace', fontSize: 12, color: '#999' }}>
               {c.caseNumber} &nbsp;|&nbsp; Chapter {c.chapter} &nbsp;|&nbsp; {c.state}
             </div>
           </div>
           <button onClick={() => navigate(`/case/${id}/agents`)} style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500,
-            background: '#157040', color: '#fff', border: 'none', cursor: 'pointer',
-            fontFamily: 'DM Sans, sans-serif',
+            background: '#5F4F86', color: '#fff', border: 'none', cursor: 'pointer',
+            fontFamily: 'Onest, Inter, sans-serif',
           }}>
             <Brain size={14} />
             Run PARALEX Agents
@@ -67,17 +67,17 @@ export default function CaseDetail() {
                 {i < STATUS_STEPS.length - 1 && (
                   <div style={{
                     position: 'absolute', top: 6, left: '50%', width: '100%', height: 2,
-                    background: done && !active ? '#157040' : '#e8e8e5',
+                    background: done && !active ? '#5F4F86' : '#eaeaea',
                     zIndex: 0,
                   }} />
                 )}
                 <div style={{
                   width: 14, height: 14, borderRadius: '50%', zIndex: 1,
-                  background: done ? '#157040' : '#e8e8e5',
-                  border: active ? '2px solid #157040' : 'none',
-                  boxShadow: active ? '0 0 0 3px #d6f2e0' : 'none',
+                  background: done ? '#5F4F86' : '#eaeaea',
+                  border: active ? '2px solid #5F4F86' : 'none',
+                  boxShadow: active ? '0 0 0 3px #e2daf5' : 'none',
                 }} />
-                <span style={{ fontSize: 10, marginTop: 6, color: done ? '#157040' : '#bbb', fontWeight: done ? 500 : 400 }}>
+                <span style={{ fontSize: 10, marginTop: 6, color: done ? '#5F4F86' : '#bbb', fontWeight: done ? 500 : 400 }}>
                   {step.charAt(0).toUpperCase() + step.slice(1)}
                 </span>
               </div>
@@ -91,12 +91,12 @@ export default function CaseDetail() {
             {
               label: 'Case Health', icon: TrendingUp,
               value: `${c.healthScore}%`,
-              color: c.healthScore >= 80 ? '#22c55e' : c.healthScore >= 50 ? '#f59e0b' : '#ef4444',
+              color: c.healthScore >= 80 ? '#7c6fb5' : c.healthScore >= 50 ? '#f59e0b' : '#ef4444',
             },
             {
               label: 'Filing Deadline', icon: Clock,
               value: c.status === 'filed' ? 'Filed' : `${days}d`,
-              color: days <= 7 ? '#ef4444' : days <= 14 ? '#f59e0b' : '#157040',
+              color: days <= 7 ? '#ef4444' : days <= 14 ? '#f59e0b' : '#5F4F86',
             },
             {
               label: 'Monthly Income', icon: TrendingUp,
@@ -109,9 +109,9 @@ export default function CaseDetail() {
               color: '#7c3aed',
             },
           ].map(({ label, icon: Icon, value, color }) => (
-            <div key={label} style={{ padding: '12px 14px', borderRadius: 10, background: '#f8f8f6' }}>
+            <div key={label} style={{ padding: '12px 14px', borderRadius: 10, background: '#fafafa' }}>
               <div style={{ fontSize: 11, color: '#999', marginBottom: 4 }}>{label}</div>
-              <div style={{ fontFamily: 'Fraunces, serif', fontSize: 18, fontWeight: 500, color }}>{value}</div>
+              <div style={{ fontFamily: 'Onest, sans-serif', fontSize: 18, fontWeight: 500, color }}>{value}</div>
             </div>
           ))}
         </div>
@@ -120,10 +120,10 @@ export default function CaseDetail() {
       {/* Two column */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
         {/* Documents */}
-        <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: 18 }}>
+        <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: '#111' }}>Documents</span>
-            <span style={{ fontSize: 11, color: '#999', fontFamily: 'DM Mono, monospace' }}>{c.documents.length} uploaded</span>
+            <span style={{ fontSize: 11, color: '#999', fontFamily: 'Geist Mono, monospace' }}>{c.documents.length} uploaded</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
             {c.documents.length === 0 ? (
@@ -131,7 +131,7 @@ export default function CaseDetail() {
             ) : c.documents.map(doc => (
               <div key={doc.id} style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: '9px 12px', borderRadius: 8, background: '#f8f8f6',
+                padding: '9px 12px', borderRadius: 8, background: '#fafafa',
               }}>
                 <FileText size={13} color="#aaa" style={{ flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -140,13 +140,13 @@ export default function CaseDetail() {
                 </div>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 4, fontSize: 11,
-                  color: doc.status === 'verified' ? '#157040' : doc.status === 'flagged' ? '#b45309' : '#888',
+                  color: doc.status === 'verified' ? '#5F4F86' : doc.status === 'flagged' ? '#b45309' : '#888',
                 }}>
                   {doc.status === 'verified' ? <CheckCircle2 size={11} /> : doc.status === 'flagged' ? <AlertTriangle size={11} /> : null}
                   {doc.status}
                 </div>
                 {doc.confidence && (
-                  <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: '#bbb' }}>
+                  <span style={{ fontSize: 11, fontFamily: 'Geist Mono, monospace', color: '#bbb' }}>
                     {Math.round(doc.confidence * 100)}%
                   </span>
                 )}
@@ -164,10 +164,10 @@ export default function CaseDetail() {
         </div>
 
         {/* Missing + Team */}
-        <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: 18 }}>
+        <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 18 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 12 }}>Missing Documents</div>
           {c.missingDocs.length === 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#157040', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5F4F86', marginBottom: 16 }}>
               <CheckCircle2 size={15} />
               All documents collected
             </div>
@@ -185,12 +185,12 @@ export default function CaseDetail() {
             </div>
           )}
 
-          <div style={{ borderTop: '1px solid #f0f0ee', paddingTop: 14 }}>
+          <div style={{ borderTop: '1px solid #f0f3ff', paddingTop: 14 }}>
             <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 10 }}>Case Team</div>
             {[{ role: 'Paralegal', name: c.paralegal }, { role: 'Attorney', name: c.attorney }].map(({ role, name }) => (
               <div key={role} style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
                 <div style={{
-                  width: 28, height: 28, borderRadius: '50%', background: '#e6f5ed', color: '#157040',
+                  width: 28, height: 28, borderRadius: '50%', background: '#ede8f8', color: '#5F4F86',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, flexShrink: 0,
                 }}>
                   {name.split(' ').map((n: string) => n[0]).join('')}
@@ -207,14 +207,14 @@ export default function CaseDetail() {
 
       {/* Notes */}
       {c.notes && (
-        <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: 18, marginBottom: 16 }}>
+        <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 18, marginBottom: 16 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 8 }}>Notes</div>
           <p style={{ fontSize: 13, color: '#555', lineHeight: 1.7, margin: 0 }}>{c.notes}</p>
         </div>
       )}
 
       {/* CTA */}
-      <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 2 }}>Ready to run PARALEX intelligence?</div>
           <div style={{ fontSize: 12, color: '#888' }}>3 Groq agents analyze this case in parallel. Avg runtime: 8-12 seconds.</div>
@@ -222,8 +222,8 @@ export default function CaseDetail() {
         <button onClick={() => navigate(`/case/${id}/agents`)} style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500,
-          background: '#157040', color: '#fff', border: 'none', cursor: 'pointer',
-          fontFamily: 'DM Sans, sans-serif',
+          background: '#5F4F86', color: '#fff', border: 'none', cursor: 'pointer',
+          fontFamily: 'Onest, Inter, sans-serif',
         }}>
           <Zap size={14} />
           Launch Agents

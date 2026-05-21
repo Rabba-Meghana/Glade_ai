@@ -7,30 +7,30 @@ const activeCount = MOCK_CASES.filter(c => c.status !== 'filed').length
 
 export default function Layout() {
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f5f5f3' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f0f3ff' }}>
       <aside style={{
         width: 224,
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
         background: '#ffffff',
-        borderRight: '1px solid #e8e8e5',
+        borderRight: '1px solid #eaeaea',
       }}>
         {/* Logo */}
-        <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid #e8e8e5' }}>
+        <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid #eaeaea' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 32, height: 32, borderRadius: 8,
-              background: '#157040',
+              background: '#5F4F86',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <Zap size={15} color="#fff" />
             </div>
             <div>
-              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontWeight: 500, fontSize: 15, color: '#0a3d22', letterSpacing: '-0.01em' }}>
+              <div style={{ fontFamily: 'Onest, sans-serif', fontWeight: 500, fontSize: 15, color: '#3d3060', letterSpacing: '-0.01em' }}>
                 PARALEX
               </div>
-              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#999', letterSpacing: '0.04em' }}>
+              <div style={{ fontFamily: 'Geist Mono, monospace', fontSize: 10, color: '#999', letterSpacing: '0.04em' }}>
                 case intelligence
               </div>
             </div>
@@ -63,8 +63,8 @@ export default function Layout() {
             <NavLink key={to} to={to} style={({ isActive }) => ({
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '8px 12px', borderRadius: 8,
-              background: isActive ? '#e6f5ed' : 'transparent',
-              color: isActive ? '#0f5530' : '#555',
+              background: isActive ? '#ede8f8' : 'transparent',
+              color: isActive ? '#4a3d6e' : '#555',
               textDecoration: 'none', fontSize: 13,
               fontWeight: isActive ? 500 : 400,
               transition: 'all 0.15s',
@@ -76,8 +76,8 @@ export default function Layout() {
               {badge && (
                 <span style={{
                   fontSize: 11, padding: '1px 7px', borderRadius: 20,
-                  background: '#d6f2e0', color: '#0f5530',
-                  fontFamily: 'DM Mono, monospace',
+                  background: '#e2daf5', color: '#4a3d6e',
+                  fontFamily: 'Geist Mono, monospace',
                 }}>
                   {badge}
                 </span>
@@ -89,7 +89,7 @@ export default function Layout() {
           <div style={{ marginTop: 16 }}>
             <div style={{
               fontSize: 10, color: '#bbb', padding: '0 12px 6px',
-              fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em', textTransform: 'uppercase',
+              fontFamily: 'Geist Mono, monospace', letterSpacing: '0.06em', textTransform: 'uppercase',
             }}>
               Active Cases
             </div>
@@ -97,13 +97,13 @@ export default function Layout() {
               <NavLink key={c.id} to={`/case/${c.id}`} style={({ isActive }) => ({
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '6px 12px', borderRadius: 8,
-                background: isActive ? '#f0faf4' : 'transparent',
+                background: isActive ? '#f5f3ff' : 'transparent',
                 color: '#555', textDecoration: 'none', fontSize: 12,
                 transition: 'all 0.15s',
               })}>
                 <div style={{
                   width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                  background: c.urgency === 'critical' ? '#ef4444' : c.urgency === 'high' ? '#f59e0b' : '#34d399',
+                  background: c.urgency === 'critical' ? '#ef4444' : c.urgency === 'high' ? '#f59e0b' : '#9b8fd4',
                 }} />
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.clientName}</span>
                 <ChevronRight size={10} style={{ opacity: 0.35, flexShrink: 0 }} />
@@ -113,14 +113,14 @@ export default function Layout() {
         </nav>
 
         {/* User */}
-        <div style={{ padding: '12px', borderTop: '1px solid #e8e8e5' }}>
+        <div style={{ padding: '12px', borderTop: '1px solid #eaeaea' }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 9,
-            padding: '8px 10px', borderRadius: 8, background: '#f8f8f6',
+            padding: '8px 10px', borderRadius: 8, background: '#fafafa',
           }}>
             <div style={{
               width: 26, height: 26, borderRadius: '50%',
-              background: '#157040', color: '#fff',
+              background: '#5F4F86', color: '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 11, fontWeight: 500, flexShrink: 0,
             }}>
