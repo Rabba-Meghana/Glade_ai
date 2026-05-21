@@ -1,8 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Brain, FileSearch, Scale, AlertOctagon, Zap, CheckCircle2, RotateCcw, Download, ChevronRight } from 'lucide-react'
+import {
+  ArrowLeft, Brain, FileSearch, Scale, AlertOctagon, FilePen, Zap, CheckCircle2,
+  RotateCcw, Download, Cpu, Activity, Sparkles
+} from 'lucide-react'
 import { MOCK_CASES } from '../lib/mockData'
+import { useTheme } from '../contexts/ThemeContext'
 
 type AgentKey = 'document' | 'compliance' | 'anomaly' | 'orchestrator'
 type AgentStatus = 'idle' | 'running' | 'complete' | 'error'
@@ -16,123 +20,204 @@ type AgentData = {
   fields?: any
   meansTest?: any
   riskScore?: number
+  startTime?: number
 }
 
-const AGENTS: Record<AgentKey, { icon: any; label: string; desc: string; color: string; bg: string }> = {
-  document:     { icon: FileSearch,   label: 'Document Intelligence', desc: 'Extracting financial fields from uploaded documents', color: '#0369a1', bg: '#dbeafe' },
-  compliance:   { icon: Scale,        label: 'Compliance Auditor',    desc: 'Means test calculation & filing requirements',        color: '#7c3aed', bg: '#ede9fe' },
-  anomaly:      { icon: AlertOctagon, label: 'Anomaly Detector',      desc: 'Cross-referencing data for inconsistencies & risks',  color: '#b45309', bg: '#fef3c7' },
-  orchestrator: { icon: Brain,        label: 'Master Orchestrator',   desc: 'Synthesizing agent findings — assembling petition draft', color: '#5F4F86', bg: '#ede8f8' },
+const AGENT_META: Record<AgentKey, { icon: any; label: string; desc: string; color: string }> = {
+  document:     { icon: FileSearch,   label: 'Document Intelligence', desc: 'Extracting financial fields from uploaded documents',     color: '#3b82f6' },
+  compliance:   { icon: Scale,        label: 'Compliance Auditor',    desc: 'Means test calculation & filing requirements',             color: '#a855f7' },
+  anomaly:      { icon: AlertOctagon, label: 'Anomaly Detector',      desc: 'Cross-referencing data for inconsistencies & risks',      color: '#f97316' },
+  orchestrator: { icon: Brain,        label: 'Master Orchestrator',   desc: 'Synthesizing findings, assembling petition draft',       color: '#a78bfa' },
 }
 
 const INIT: AgentData = { status: 'idle', streamText: '', findings: [], confidence: 0 }
 
+// Token-counter animated number
+function AnimatedNumber({ value, format }: { value: number; format?: (n: number) => string }) {
+  const [display, setDisplay] = useState(0)
+  useEffect(() => {
+    const start = display
+    const t0 = Date.now()
+    const dur = 400
+    const tick = () => {
+      const p = Math.min(1, (Date.now() - t0) / dur)
+      setDisplay(start + (value - start) * (1 - Math.pow(1 - p, 3)))
+      if (p < 1) requestAnimationFrame(tick)
+    }
+    tick()
+  }, [value])
+  return <>{format ? format(display) : Math.round(display)}</>
+}
+
+// Confidence ring
+function ConfidenceRing({ value, color, size = 56 }: { value: number; color: string; size?: number }) {
+  const { c } = useTheme()
+  const r = (size - 8) / 2
+  const circ = 2 * Math.PI * r
+  const offset = circ * (1 - value)
+  return (
+    <div style={{ position: 'relative', width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={c.border} strokeWidth={4} />
+        <motion.circle cx={size/2} cy={size/2} r={r} fill="none"
+          stroke={color} strokeWidth={4} strokeLinecap="round" strokeDasharray={circ}
+          initial={{ strokeDashoffset: circ }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 0.8 }} />
+      </svg>
+      <div style={{
+        position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: c.text, fontFamily: 'Geist Mono, monospace', lineHeight: 1 }}>
+          {Math.round(value * 100)}
+        </span>
+        <span style={{ fontSize: 8, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>%</span>
+      </div>
+    </div>
+  )
+}
+
+function StatusPulse({ status, color }: { status: AgentStatus; color: string }) {
+  const { c } = useTheme()
+  const map = {
+    idle:     { label: 'STANDBY',  bg: c.textSubtle },
+    running:  { label: 'STREAMING', bg: color },
+    complete: { label: 'COMPLETE', bg: c.success },
+    error:    { label: 'ERROR',    bg: c.danger },
+  }[status]
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ position: 'relative', width: 6, height: 6 }}>
+        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: map.bg }} />
+        {status === 'running' && <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', background: map.bg, opacity: 0.4, animation: 'ping 1.4s infinite' }} />}
+      </div>
+      <span style={{ fontSize: 9.5, fontWeight: 600, color: map.bg, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.08em' }}>
+        {map.label}
+      </span>
+    </div>
+  )
+}
+
 function AgentPanel({ agentKey, data, isActive }: { agentKey: AgentKey; data: AgentData; isActive: boolean }) {
-  const m = AGENTS[agentKey]
+  const m = AGENT_META[agentKey]
   const Icon = m.icon
+  const { c, theme } = useTheme()
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight }, [data.streamText])
 
-  const statusColor = data.status === 'running' ? m.color : data.status === 'complete' ? '#5F4F86' : data.status === 'error' ? '#dc2626' : '#bbb'
-  const statusBg = data.status === 'running' ? m.bg : data.status === 'complete' ? '#ede8f8' : data.status === 'error' ? '#fee2e2' : '#f0f3ff'
-  const statusLabel = { idle: 'Standby', running: 'Running', complete: 'Complete', error: 'Error' }[data.status]
+  const tokenCount = Math.floor(data.streamText.length / 4)
 
   return (
-    <div style={{
-      background: '#fff',
-      border: `${isActive ? 1.5 : 1}px solid ${isActive ? m.color : data.status === 'complete' ? '#ede8f8' : '#eaeaea'}`,
-      borderRadius: 12,
-      display: 'flex', flexDirection: 'column',
-      minHeight: 260,
-      transition: 'border-color 0.2s',
-    }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #f0f3ff' }}>
+    <motion.div
+      animate={{
+        borderColor: isActive ? m.color : (data.status === 'complete' ? c.borderStrong : c.border),
+        boxShadow: isActive ? `0 0 0 1px ${m.color}, 0 8px 32px ${m.color}33` : 'none',
+      }}
+      style={{
+        background: c.bgElevated, border: `1px solid ${c.border}`,
+        borderRadius: 14, display: 'flex', flexDirection: 'column',
+        minHeight: 280, overflow: 'hidden',
+      }}>
+
+      {/* Header strip */}
+      {isActive && (
+        <div style={{ height: 2, background: m.color, position: 'relative', overflow: 'hidden' }}>
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: `linear-gradient(90deg, transparent, ${m.color}cc, transparent)`,
+            width: '40%', animation: 'data-flow 1.4s infinite linear',
+          }} />
+        </div>
+      )}
+
+      <div style={{ padding: '12px 14px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: m.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Icon size={15} color={m.color} />
+          <div style={{
+            width: 30, height: 30, borderRadius: 8,
+            background: theme === 'dark' ? `${m.color}1a` : `${m.color}1f`,
+            border: `1px solid ${m.color}33`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Icon size={14} color={m.color} />
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: '#111' }}>{m.label}</div>
-            <div style={{ fontSize: 11, color: '#bbb', marginTop: 1 }}>{m.desc}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: c.text, letterSpacing: '-0.01em' }}>{m.label}</div>
+            <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginTop: 1 }}>
+              groq · llama-3.3-70b
+            </div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {data.elapsed && data.status === 'complete' && (
-            <span style={{ fontSize: 11, fontFamily: 'Geist Mono, monospace', color: '#bbb' }}>{(data.elapsed / 1000).toFixed(1)}s</span>
-          )}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 500,
-            background: statusBg, color: statusColor,
-          }}>
-            {data.status === 'running' && (
-              <div style={{ width: 5, height: 5, borderRadius: '50%', background: m.color, animation: 'pulse 1.2s infinite' }} />
-            )}
-            {data.status === 'complete' && <CheckCircle2 size={11} />}
-            {statusLabel}
+        <StatusPulse status={data.status} color={m.color} />
+      </div>
+
+      {/* Live metrics */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderBottom: `1px solid ${c.border}` }}>
+        <div style={{ padding: '10px 12px', borderRight: `1px solid ${c.border}` }}>
+          <div style={{ fontSize: 9, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.08em' }}>TOKENS</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: c.text, fontFamily: 'Geist Mono, monospace', marginTop: 2 }}>
+            <AnimatedNumber value={tokenCount} />
           </div>
+        </div>
+        <div style={{ padding: '10px 12px', borderRight: `1px solid ${c.border}` }}>
+          <div style={{ fontSize: 9, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.08em' }}>FINDINGS</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: c.text, fontFamily: 'Geist Mono, monospace', marginTop: 2 }}>
+            <AnimatedNumber value={data.findings.length} />
+          </div>
+        </div>
+        <div style={{ padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: 9, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.08em' }}>CONF</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: m.color, fontFamily: 'Geist Mono, monospace', marginTop: 2 }}>
+              <AnimatedNumber value={data.confidence * 100} format={n => n.toFixed(0) + '%'} />
+            </div>
+          </div>
+          <ConfidenceRing value={data.confidence} color={m.color} size={36} />
         </div>
       </div>
 
-      {/* Stream */}
+      {/* Stream area */}
       <div ref={ref} style={{
-        flex: 1, padding: '12px 16px', overflow: 'auto', maxHeight: 160,
-        background: data.status === 'idle' ? '#fafaf9' : '#fff',
+        flex: 1, padding: 12, overflowY: 'auto', minHeight: 130, maxHeight: 200,
+        background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#fbfbfd',
+        fontFamily: 'Geist Mono, ui-monospace, monospace', fontSize: 11.5, lineHeight: 1.55,
+        color: c.textMuted,
       }}>
-        {data.status === 'idle' ? (
-          <div style={{ textAlign: 'center', paddingTop: 32, fontSize: 12, color: '#ddd' }}>Waiting to initialize...</div>
-        ) : (
-          <pre style={{
-            fontFamily: 'Geist Mono, monospace', fontSize: 11, lineHeight: 1.7,
-            color: '#333', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          }}>
+        {data.streamText ? (
+          <>
             {data.streamText}
             {data.status === 'running' && (
-              <span style={{
-                display: 'inline-block', width: 6, height: 12, marginLeft: 2,
-                background: m.color, verticalAlign: 'text-bottom',
-                animation: 'pulse 0.8s infinite',
-              }} />
+              <span style={{ display: 'inline-block', width: 6, height: 12, background: m.color, marginLeft: 2, verticalAlign: 'middle', animation: 'cursor-blink 0.9s infinite' }} />
             )}
-          </pre>
+          </>
+        ) : (
+          <span style={{ color: c.textSubtle, fontStyle: 'italic' }}>{m.desc}</span>
         )}
       </div>
 
       {/* Findings */}
-      {data.status === 'complete' && data.findings.length > 0 && (
-        <div style={{ borderTop: '1px solid #f0f3ff', padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {data.findings.slice(0, 3).map((f: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 11 }}>
-              <div style={{
-                width: 5, height: 5, borderRadius: '50%', marginTop: 4, flexShrink: 0,
-                background: f.type === 'error' ? '#ef4444' : f.type === 'warning' ? '#f59e0b' : f.type === 'success' ? '#7c6fb5' : '#60a5fa',
-              }} />
-              <span style={{ color: '#555' }}>{f.message}</span>
+      {data.findings.length > 0 && (
+        <div style={{ padding: '10px 14px', borderTop: `1px solid ${c.border}` }}>
+          <div style={{ fontSize: 9.5, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.08em', marginBottom: 6 }}>
+            KEY FINDINGS
+          </div>
+          {data.findings.slice(0, 3).map((f, i) => (
+            <div key={i} style={{ fontSize: 11, color: c.text, marginBottom: 4, paddingLeft: 10, position: 'relative' }}>
+              <div style={{ position: 'absolute', left: 0, top: 6, width: 4, height: 4, borderRadius: '50%', background: m.color }} />
+              {typeof f === 'string' ? f : f.label || f.message || JSON.stringify(f)}
             </div>
           ))}
         </div>
       )}
-
-      {/* Confidence bar */}
-      {data.status === 'complete' && data.confidence > 0 && (
-        <div style={{ padding: '8px 16px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#f0f3ff' }}>
-            <div style={{ height: '100%', borderRadius: 2, background: m.color, width: `${data.confidence * 100}%` }} />
-          </div>
-          <span style={{ fontSize: 11, fontFamily: 'Geist Mono, monospace', color: m.color }}>
-            {Math.round(data.confidence * 100)}% conf.
-          </span>
-        </div>
-      )}
-    </div>
+    </motion.div>
   )
 }
 
 export default function AgentOrchestration() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const c = MOCK_CASES.find(x => x.id === id)
+  const { c, theme } = useTheme()
+  const caseData = MOCK_CASES.find(x => x.id === id)
 
   const [running, setRunning] = useState(false)
   const [done, setDone] = useState(false)
@@ -170,7 +255,7 @@ export default function AgentOrchestration() {
   }
 
   const run = async () => {
-    if (!c) return
+    if (!caseData) return
     reset()
     await new Promise(r => setTimeout(r, 50))
     setRunning(true)
@@ -179,7 +264,7 @@ export default function AgentOrchestration() {
 
     try {
       setAgents({
-        document: { status: 'running', streamText: '', findings: [], confidence: 0, startTime: t0 } as any,
+        document: { status: 'running', streamText: '', findings: [], confidence: 0, startTime: t0 },
         compliance: { status: 'running', streamText: '', findings: [], confidence: 0 },
         anomaly: { status: 'running', streamText: '', findings: [], confidence: 0 },
         orchestrator: { ...INIT },
@@ -189,7 +274,7 @@ export default function AgentOrchestration() {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caseData: c, documents: c.documents }),
+        body: JSON.stringify({ caseData, documents: caseData.documents }),
       })
       if (!res.ok) throw new Error(`API ${res.status}`)
 
@@ -214,7 +299,7 @@ export default function AgentOrchestration() {
 
             if (msg.type === 'status' && msg.agent) {
               setActiveAgent(msg.agent as AgentKey)
-              update(msg.agent as AgentKey, { status: 'running', startTime: Date.now() } as any)
+              update(msg.agent as AgentKey, { status: 'running', startTime: Date.now() })
             }
             if (msg.type === 'stream' && msg.agent && msg.text) {
               append(msg.agent as AgentKey, msg.text)
@@ -255,230 +340,203 @@ export default function AgentOrchestration() {
   }
 
   const downloadPdf = async () => {
-    if (!c || !petition) return
+    if (!caseData || !petition) return
     try {
       const res = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ petition, caseData: c }),
+        body: JSON.stringify({ petition, caseData }),
       })
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `PARALEX_${c?.caseNumber}_petition.pdf`
+      a.download = `PARALEX_${caseData.caseNumber}_petition.pdf`
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) { console.error(e) }
   }
 
-  if (!c) return <div style={{ padding: 32, color: '#888', fontSize: 13 }}>Case not found.</div>
+  if (!caseData) return <div style={{ padding: 32, color: c.textSubtle, fontSize: 13 }}>Case not found.</div>
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: '24px 28px', minHeight: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <button onClick={() => navigate(`/case/${id}`)} style={{
           display: 'flex', alignItems: 'center', gap: 6,
-          fontSize: 13, color: '#666', background: 'none', border: 'none',
-          cursor: 'pointer', padding: 0, fontFamily: 'Onest, Inter, sans-serif',
+          fontSize: 12.5, color: c.textMuted, background: 'none', border: 'none',
+          cursor: 'pointer', padding: 0, fontFamily: 'inherit',
         }}>
-          <ArrowLeft size={14} />
-          {c.clientName} — {c.caseNumber}
+          <ArrowLeft size={13} />
+          {caseData.clientName} · {caseData.caseNumber}
         </button>
-        <div style={{ display: 'flex', gap: 10 }}>
+
+        <div style={{ display: 'flex', gap: 8 }}>
           {done && (
             <button onClick={downloadPdf} style={{
               display: 'flex', alignItems: 'center', gap: 7,
-              padding: '8px 16px', borderRadius: 8, fontSize: 13,
-              background: '#fff', border: '1px solid #eaeaea', color: '#555',
-              cursor: 'pointer', fontFamily: 'Onest, Inter, sans-serif',
+              padding: '8px 16px', borderRadius: 9, fontSize: 12.5, fontWeight: 600,
+              background: c.surface, border: `1px solid ${c.border}`, color: c.text,
+              cursor: 'pointer',
             }}>
-              <Download size={13} />
-              Export PDF
+              <Download size={13} /> Export PDF
             </button>
           )}
           <button onClick={running ? undefined : run} disabled={running} style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500,
-            background: running ? '#eaeaea' : '#5F4F86', color: running ? '#888' : '#fff',
-            border: 'none', cursor: running ? 'not-allowed' : 'pointer',
-            fontFamily: 'Onest, Inter, sans-serif', transition: 'all 0.15s',
+            padding: '8px 18px', borderRadius: 9, fontSize: 12.5, fontWeight: 600,
+            background: running ? c.surface : c.gradient,
+            color: running ? c.textMuted : '#fff',
+            border: running ? `1px solid ${c.border}` : 'none',
+            cursor: running ? 'not-allowed' : 'pointer',
+            boxShadow: running ? 'none' : '0 4px 14px rgba(167, 139, 250, 0.35)',
           }}>
             {running ? (
               <>
-                <div style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid #aaa', borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite' }} />
-                Running... {(elapsed / 1000).toFixed(1)}s
+                <div style={{ width: 12, height: 12, borderRadius: '50%', border: `2px solid ${c.textSubtle}`, borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite' }} />
+                Streaming · {(elapsed / 1000).toFixed(1)}s
               </>
             ) : done ? (
-              <><RotateCcw size={13} />Re-run Agents</>
+              <><RotateCcw size={13} /> Re-run</>
             ) : (
-              <><Zap size={13} />Launch PARALEX Agents</>
+              <><Sparkles size={13} /> Launch Agents</>
             )}
           </button>
         </div>
       </div>
 
-      <h1 style={{ fontFamily: 'Onest, sans-serif', fontSize: 20, fontWeight: 500, color: '#111', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
-        PARALEX Agent Orchestration
-      </h1>
-      <p style={{ fontSize: 13, color: '#888', margin: '0 0 20px' }}>
-        3 Groq agents running in parallel — watch them think in real time
-      </p>
+      {/* Title block */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <span style={{ fontSize: 11, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Theater
+          </span>
+          <div style={{ width: 3, height: 3, borderRadius: '50%', background: c.textSubtle }} />
+          <span style={{ fontSize: 11, color: c.accent, fontFamily: 'Geist Mono, monospace' }}>
+            multi-agent · parallel
+          </span>
+        </div>
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: c.text, letterSpacing: '-0.02em' }}>
+          Agent Orchestration
+        </h1>
+        <p style={{ fontSize: 13, color: c.textMuted, margin: '3px 0 0' }}>
+          Three specialized Groq agents work in parallel, hand off findings to the orchestrator
+        </p>
+      </div>
 
-      {/* Success banner */}
+      {/* Hero stat row when complete */}
       <AnimatePresence>
         {done && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            style={{
-              background: '#fff', border: '1px solid #ede8f8', borderRadius: 12,
-              padding: '14px 18px', marginBottom: 16,
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: summary ? 6 : 0 }}>
-                <CheckCircle2 size={15} color="#5F4F86" />
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#111' }}>Analysis Complete</span>
-                <span style={{
-                  fontSize: 11, fontFamily: 'Geist Mono, monospace',
-                  padding: '2px 8px', borderRadius: 20, background: '#ede8f8', color: '#5F4F86',
-                }}>
-                  {(elapsed / 1000).toFixed(1)}s total
-                </span>
-              </div>
-              {summary && <p style={{ fontSize: 12, color: '#555', margin: 0, lineHeight: 1.6, maxWidth: 560 }}>{summary}</p>}
-            </div>
-            <div style={{ display: 'flex', gap: 24, flexShrink: 0, marginLeft: 16 }}>
-              {[
-                { l: 'Confidence', v: `${Math.round(overallConf * 100)}%`, c: '#5F4F86' },
-                { l: 'Fields Filled', v: fieldsAutoFilled, c: '#0369a1' },
-                { l: 'Time Saved', v: `${Math.round(timeSaved / 60 * 10) / 10}h`, c: '#7c3aed' },
-              ].map(({ l, v, c: col }) => (
-                <div key={l} style={{ textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'Onest, sans-serif', fontSize: 20, fontWeight: 500, color: col }}>{v}</div>
-                  <div style={{ fontSize: 11, color: '#aaa' }}>{l}</div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 3 agent panels */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        {(['document', 'compliance', 'anomaly'] as AgentKey[]).map(k => (
-          <AgentPanel key={k} agentKey={k} data={agents[k]} isActive={activeAgent === k} />
-        ))}
-
-        {/* Orchestrator - spans full width */}
-        <div style={{
-          background: '#fff',
-          border: `${activeAgent === 'orchestrator' ? 1.5 : 1}px solid ${activeAgent === 'orchestrator' ? '#5F4F86' : agents.orchestrator.status === 'complete' ? '#ede8f8' : '#eaeaea'}`,
-          borderRadius: 12,
-          transition: 'border-color 0.2s',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #f0f3ff' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: '#ede8f8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Brain size={15} color="#5F4F86" />
-              </div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: '#111' }}>Master Orchestrator</div>
-                <div style={{ fontSize: 11, color: '#bbb' }}>Synthesizing agent findings — assembling petition draft</div>
-              </div>
-            </div>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 500,
-              background: agents.orchestrator.status === 'running' ? '#ede8f8' : agents.orchestrator.status === 'complete' ? '#ede8f8' : '#f0f3ff',
-              color: agents.orchestrator.status === 'running' ? '#5F4F86' : agents.orchestrator.status === 'complete' ? '#4a3d6e' : '#bbb',
-            }}>
-              {agents.orchestrator.status === 'running' && <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#7c6fb5', animation: 'pulse 1.2s infinite' }} />}
-              {agents.orchestrator.status === 'complete' && <CheckCircle2 size={11} />}
-              {agents.orchestrator.status === 'idle' ? 'Waiting for agents' : agents.orchestrator.status === 'running' ? 'Synthesizing' : 'Complete'}
-            </div>
-          </div>
-          <div style={{ padding: '12px 16px', maxHeight: 180, overflow: 'auto' }}>
-            {agents.orchestrator.status === 'idle' ? (
-              <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 12, color: '#ddd' }}>
-                Awaiting document, compliance, and anomaly agent results...
-              </div>
-            ) : (
-              <pre style={{ fontFamily: 'Geist Mono, monospace', fontSize: 11, lineHeight: 1.7, color: '#333', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                {agents.orchestrator.streamText}
-                {agents.orchestrator.status === 'running' && (
-                  <span style={{ display: 'inline-block', width: 6, height: 12, marginLeft: 2, background: '#5F4F86', verticalAlign: 'text-bottom', animation: 'pulse 0.8s infinite' }} />
-                )}
-              </pre>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Petition output */}
-      <AnimatePresence>
-        {done && petition && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            {[
-              {
-                title: 'SCHEDULE I — INCOME', color: '#5F4F86',
-                data: petition.scheduleI,
-              },
-              {
-                title: 'SCHEDULE J — EXPENSES', color: '#7c3aed',
-                data: petition.scheduleJ,
-              },
-              {
-                title: 'MEANS TEST', color: '#b45309',
-                data: petition.meansTest,
-                extra: priorityActions,
-              },
-            ].map(({ title, color, data, extra }) => (
-              <div key={title} style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 16 }}>
-                <div style={{
-                  fontSize: 10, fontFamily: 'Geist Mono, monospace', fontWeight: 500,
-                  color, letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 12,
-                }}>
-                  {title}
-                </div>
-                {data && Object.entries(data).map(([k, v]) => (
-                  <div key={k} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '6px 0', borderBottom: '1px solid #fafafa', fontSize: 12,
-                  }}>
-                    <span style={{ color: '#666' }}>{k.replace(/([A-Z])/g, ' $1').trim()}</span>
-                    <span style={{
-                      fontFamily: 'Geist Mono, monospace', fontWeight: 500,
-                      color: k === 'passesTest' ? (v ? '#5F4F86' : '#dc2626') : '#111',
+            style={{ marginBottom: 16 }}>
+            <div style={{ background: c.gradient, borderRadius: 14, padding: 1 }}>
+              <div style={{ background: c.bgElevated, borderRadius: 13, padding: '16px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 38, height: 38, borderRadius: 10, background: c.gradient,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 4px 14px rgba(167, 139, 250, 0.4)',
                     }}>
-                      {typeof v === 'boolean' ? (v ? 'PASSES' : 'FAILS') :
-                       typeof v === 'number' ? (k.toLowerCase().includes('employer') || k.toLowerCase().includes('occupation') ? String(v) : `$${(v as number).toLocaleString()}`) :
-                       String(v)}
-                    </span>
+                      <CheckCircle2 size={18} color="#fff" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>Analysis complete</div>
+                      <div style={{ fontSize: 11.5, color: c.textMuted, marginTop: 2, maxWidth: 480 }}>{summary}</div>
+                    </div>
                   </div>
-                ))}
-                {extra && extra.length > 0 && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f3ff' }}>
-                    <div style={{ fontSize: 11, fontWeight: 500, color: '#b45309', marginBottom: 8 }}>Priority Actions</div>
-                    {extra.map((a: string, i: number) => (
-                      <div key={i} style={{ display: 'flex', gap: 6, fontSize: 11, marginBottom: 6 }}>
-                        <ChevronRight size={11} color="#b45309" style={{ flexShrink: 0, marginTop: 1 }} />
-                        <span style={{ color: '#555' }}>{a}</span>
+                  <div style={{ display: 'flex', gap: 24 }}>
+                    {[
+                      { label: 'TIME SAVED', value: `${(timeSaved / 60).toFixed(1)}h`, color: c.success },
+                      { label: 'AUTO-FILLED', value: `${fieldsAutoFilled}`, color: c.info },
+                      { label: 'CONFIDENCE', value: `${Math.round(overallConf * 100)}%`, color: c.accent },
+                      { label: 'TOTAL', value: `${(elapsed / 1000).toFixed(1)}s`, color: c.text },
+                    ].map(s => (
+                      <div key={s.label} style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 9.5, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.08em' }}>{s.label}</div>
+                        <div style={{ fontSize: 19, fontWeight: 600, color: s.color, fontFamily: 'Geist Mono, monospace', marginTop: 2, letterSpacing: '-0.02em' }}>{s.value}</div>
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
-            ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
-      `}</style>
+      {/* 3 parallel agent panels */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 12 }}>
+        <AgentPanel agentKey="document" data={agents.document} isActive={activeAgent === 'document'} />
+        <AgentPanel agentKey="compliance" data={agents.compliance} isActive={activeAgent === 'compliance'} />
+        <AgentPanel agentKey="anomaly" data={agents.anomaly} isActive={activeAgent === 'anomaly'} />
+      </div>
+
+      {/* Handoff arrow + Orchestrator */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '4px 0 12px' }}>
+        <svg width="100%" height="40" viewBox="0 0 800 40" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="handoff-grad" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={c.accent} stopOpacity="0.6" />
+              <stop offset="100%" stopColor={c.accent} stopOpacity="0.1" />
+            </linearGradient>
+          </defs>
+          <path d="M 130 0 Q 130 20, 400 30 Q 670 20, 670 0" fill="none" stroke="url(#handoff-grad)" strokeWidth="1.5" strokeDasharray="4 4" />
+          <path d="M 400 0 L 400 32" stroke="url(#handoff-grad)" strokeWidth="1.5" strokeDasharray="4 4" />
+          {(activeAgent === 'orchestrator' || agents.orchestrator.status === 'running') && (
+            <motion.circle r="3" fill={c.accent}
+              initial={{ cx: 130, cy: 0 }}
+              animate={{ cx: [130, 400, 670, 400], cy: [0, 30, 0, 30] }}
+              transition={{ duration: 2, repeat: Infinity }} />
+          )}
+        </svg>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <AgentPanel agentKey="orchestrator" data={agents.orchestrator} isActive={activeAgent === 'orchestrator'} />
+      </div>
+
+      {/* Priority actions */}
+      {priorityActions.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          style={{
+            background: c.bgElevated, border: `1px solid ${c.border}`,
+            borderRadius: 14, padding: 18, marginBottom: 16,
+          }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
+            <Activity size={14} color={c.accent} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Priority Actions</span>
+            <span style={{
+              fontSize: 10, padding: '2px 7px', borderRadius: 5, background: c.accentSoft, color: c.accentText,
+              fontFamily: 'Geist Mono, monospace', fontWeight: 600,
+            }}>
+              {priorityActions.length}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {priorityActions.map((a, i) => (
+              <motion.div key={i}
+                initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 10,
+                  padding: '10px 12px', borderRadius: 9,
+                  background: c.surface, border: `1px solid ${c.border}`,
+                }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                  background: c.accentSoft, color: c.accentText,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10.5, fontWeight: 700, fontFamily: 'Geist Mono, monospace',
+                }}>
+                  {i + 1}
+                </div>
+                <div style={{ fontSize: 12.5, color: c.text, lineHeight: 1.5 }}>{a}</div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      )}
     </div>
   )
 }

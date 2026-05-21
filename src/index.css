@@ -1,18 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600&family=Inter:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap');
 @import "tailwindcss";
 
 * { box-sizing: border-box; }
 
-body {
-  background: #f0f3ff;
+html, body {
+  margin: 0; padding: 0;
   font-family: 'Onest', 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  color: #161616;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
+#root { height: 100vh; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: rgba(120, 120, 130, 0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(120, 120, 130, 0.5); }
 
 @keyframes pulse-dot {
   0%, 100% { opacity: 0.5; }
@@ -23,3 +26,37 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+@keyframes ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes data-flow {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(40px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(40px) rotate(-360deg); }
+}
+@keyframes draw-line {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+
+.fade-in { animation: fade-in-up 0.4s ease-out; }
+.glow { box-shadow: 0 0 24px currentColor; }

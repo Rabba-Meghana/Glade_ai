@@ -1,233 +1,276 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Brain, Clock, AlertTriangle, CheckCircle2, FileText, Upload, Zap, TrendingUp, Scale, ChevronRight, User } from 'lucide-react'
+import { motion } from 'framer-motion'
+import {
+  ArrowLeft, Brain, Clock, AlertTriangle, CheckCircle2, FileText, Upload, Sparkles,
+  TrendingUp, Scale, ChevronRight, User, DollarSign, FileSearch, Activity
+} from 'lucide-react'
 import { MOCK_CASES } from '../lib/mockData'
+import { useTheme } from '../contexts/ThemeContext'
 
 function daysUntil(d: string) { return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) }
 
 const STATUS_STEPS = ['intake', 'retain', 'collecting', 'drafting', 'review', 'filed']
+const STEP_LABELS: Record<string, string> = {
+  intake: 'Intake', retain: 'Retained', collecting: 'Collecting',
+  drafting: 'Drafting', review: 'Review', filed: 'Filed',
+}
 
 export default function CaseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const c = MOCK_CASES.find(x => x.id === id)
-  if (!c) return <div style={{ padding: 32, color: '#888', fontSize: 13 }}>Case not found.</div>
+  const { c: t, theme } = useTheme()
+  const cs = MOCK_CASES.find(x => x.id === id)
+  if (!cs) return <div style={{ padding: 32, color: t.textSubtle, fontSize: 13 }}>Case not found.</div>
 
-  const days = daysUntil(c.filingDeadline)
-  const currentStep = STATUS_STEPS.indexOf(c.status)
+  const days = daysUntil(cs.filingDeadline)
+  const currentStep = STATUS_STEPS.indexOf(cs.status)
+  const healthColor = cs.healthScore >= 75 ? t.success : cs.healthScore >= 50 ? t.warning : t.danger
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 960, margin: '0 auto' }}>
-      {/* Back */}
+    <div style={{ padding: '24px 28px', maxWidth: 1100, margin: '0 auto' }}>
       <button onClick={() => navigate('/war-room')} style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        fontSize: 13, color: '#666', background: 'none', border: 'none',
-        cursor: 'pointer', padding: 0, marginBottom: 20, fontFamily: 'Onest, Inter, sans-serif',
+        fontSize: 12.5, color: t.textMuted, background: 'none', border: 'none',
+        cursor: 'pointer', padding: 0, marginBottom: 18,
       }}>
-        <ArrowLeft size={14} />
-        Back to War Room
+        <ArrowLeft size={13} /> Back to War Room
       </button>
 
-      {/* Hero card */}
-      <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 20, marginBottom: 16 }}>
+      {/* Hero */}
+      <div style={{
+        background: t.bgElevated, border: `1px solid ${t.border}`,
+        borderRadius: 14, padding: 22, marginBottom: 14, position: 'relative', overflow: 'hidden',
+      }}>
+        {cs.urgency === 'critical' && (
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: t.danger }} />
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <h1 style={{ fontFamily: 'Onest, sans-serif', fontSize: 20, fontWeight: 500, color: '#111', margin: 0, letterSpacing: '-0.02em' }}>
-                {c.clientName}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 600, color: t.text, margin: 0, letterSpacing: '-0.02em' }}>
+                {cs.clientName}
               </h1>
-              {c.urgency === 'critical' && (
-                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#fee2e2', color: '#dc2626', fontWeight: 500 }}>
-                  Critical
+              {cs.urgency === 'critical' && (
+                <span style={{
+                  fontSize: 10.5, padding: '3px 9px', borderRadius: 20,
+                  background: theme === 'dark' ? 'rgba(248,113,113,0.12)' : '#fee2e2',
+                  color: t.danger, fontWeight: 600,
+                  border: `1px solid ${theme === 'dark' ? 'rgba(248,113,113,0.3)' : '#fecaca'}`,
+                }}>
+                  CRITICAL
                 </span>
               )}
             </div>
-            <div style={{ fontFamily: 'Geist Mono, monospace', fontSize: 12, color: '#999' }}>
-              {c.caseNumber} &nbsp;|&nbsp; Chapter {c.chapter} &nbsp;|&nbsp; {c.state}
+            <div style={{ fontFamily: 'Geist Mono, monospace', fontSize: 12, color: t.textMuted }}>
+              {cs.caseNumber} · Chapter {cs.chapter} · {cs.state}
             </div>
           </div>
           <button onClick={() => navigate(`/case/${id}/agents`)} style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500,
-            background: '#5F4F86', color: '#fff', border: 'none', cursor: 'pointer',
-            fontFamily: 'Onest, Inter, sans-serif',
+            padding: '9px 18px', borderRadius: 9, fontSize: 13, fontWeight: 600,
+            background: t.gradient, color: '#fff', border: 'none', cursor: 'pointer',
+            boxShadow: '0 4px 14px rgba(167, 139, 250, 0.35)',
           }}>
-            <Brain size={14} />
-            Run PARALEX Agents
-            <ChevronRight size={13} />
+            <Sparkles size={14} /> Launch Agents <ChevronRight size={13} />
           </button>
         </div>
 
         {/* Progress timeline */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginBottom: 20 }}>
-          {STATUS_STEPS.map((step, i) => {
-            const done = i <= currentStep
-            const active = i === currentStep
-            return (
-              <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                {i < STATUS_STEPS.length - 1 && (
-                  <div style={{
-                    position: 'absolute', top: 6, left: '50%', width: '100%', height: 2,
-                    background: done && !active ? '#5F4F86' : '#eaeaea',
-                    zIndex: 0,
-                  }} />
-                )}
-                <div style={{
-                  width: 14, height: 14, borderRadius: '50%', zIndex: 1,
-                  background: done ? '#5F4F86' : '#eaeaea',
-                  border: active ? '2px solid #5F4F86' : 'none',
-                  boxShadow: active ? '0 0 0 3px #e2daf5' : 'none',
-                }} />
-                <span style={{ fontSize: 10, marginTop: 6, color: done ? '#5F4F86' : '#bbb', fontWeight: done ? 500 : 400 }}>
-                  {step.charAt(0).toUpperCase() + step.slice(1)}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          {[
-            {
-              label: 'Case Health', icon: TrendingUp,
-              value: `${c.healthScore}%`,
-              color: c.healthScore >= 80 ? '#7c6fb5' : c.healthScore >= 50 ? '#f59e0b' : '#ef4444',
-            },
-            {
-              label: 'Filing Deadline', icon: Clock,
-              value: c.status === 'filed' ? 'Filed' : `${days}d`,
-              color: days <= 7 ? '#ef4444' : days <= 14 ? '#f59e0b' : '#5F4F86',
-            },
-            {
-              label: 'Monthly Income', icon: TrendingUp,
-              value: `$${c.monthlyIncome?.toLocaleString()}`,
-              color: '#0369a1',
-            },
-            {
-              label: 'Total Debt', icon: Scale,
-              value: `$${((c.totalDebt || 0) / 1000).toFixed(0)}K`,
-              color: '#7c3aed',
-            },
-          ].map(({ label, icon: Icon, value, color }) => (
-            <div key={label} style={{ padding: '12px 14px', borderRadius: 10, background: '#fafafa' }}>
-              <div style={{ fontSize: 11, color: '#999', marginBottom: 4 }}>{label}</div>
-              <div style={{ fontFamily: 'Onest, sans-serif', fontSize: 18, fontWeight: 500, color }}>{value}</div>
-            </div>
-          ))}
+        <div style={{ marginTop: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, position: 'relative' }}>
+            {STATUS_STEPS.map((step, i) => {
+              const isComplete = i < currentStep
+              const isCurrent = i === currentStep
+              return (
+                <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+                  {i > 0 && (
+                    <div style={{
+                      position: 'absolute', top: 11, left: '-50%', right: '50%', height: 2,
+                      background: isComplete || isCurrent ? t.gradient : t.border,
+                    }} />
+                  )}
+                  <motion.div
+                    initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ delay: i * 0.05 }}
+                    style={{
+                      width: 22, height: 22, borderRadius: '50%', zIndex: 1,
+                      background: isComplete ? t.success : isCurrent ? t.accent : t.surface,
+                      border: `2px solid ${isComplete ? t.success : isCurrent ? t.accent : t.borderStrong}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: isCurrent ? `0 0 0 4px ${t.accent}33` : 'none',
+                    }}>
+                    {isComplete && <CheckCircle2 size={11} color="#fff" />}
+                    {isCurrent && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />}
+                  </motion.div>
+                  <div style={{ fontSize: 10.5, color: isCurrent ? t.text : t.textMuted, marginTop: 6, fontWeight: isCurrent ? 600 : 500, fontFamily: 'Geist Mono, monospace' }}>
+                    {STEP_LABELS[step]}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Two column */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-        {/* Documents */}
-        <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <span style={{ fontSize: 13, fontWeight: 500, color: '#111' }}>Documents</span>
-            <span style={{ fontSize: 11, color: '#999', fontFamily: 'Geist Mono, monospace' }}>{c.documents.length} uploaded</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-            {c.documents.length === 0 ? (
-              <div style={{ fontSize: 12, color: '#bbb', textAlign: 'center', padding: '16px 0' }}>No documents yet</div>
-            ) : c.documents.map(doc => (
-              <div key={doc.id} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '9px 12px', borderRadius: 8, background: '#fafafa',
-              }}>
-                <FileText size={13} color="#aaa" style={{ flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.name}</div>
-                  <div style={{ fontSize: 11, color: '#bbb' }}>{doc.type.replace('_', ' ')}</div>
-                </div>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 4, fontSize: 11,
-                  color: doc.status === 'verified' ? '#5F4F86' : doc.status === 'flagged' ? '#b45309' : '#888',
-                }}>
-                  {doc.status === 'verified' ? <CheckCircle2 size={11} /> : doc.status === 'flagged' ? <AlertTriangle size={11} /> : null}
-                  {doc.status}
-                </div>
-                {doc.confidence && (
-                  <span style={{ fontSize: 11, fontFamily: 'Geist Mono, monospace', color: '#bbb' }}>
-                    {Math.round(doc.confidence * 100)}%
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 12px', borderRadius: 8,
-            border: '1px dashed #d1d5db', fontSize: 12, color: '#aaa', cursor: 'pointer',
+      {/* Top metrics row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
+        {[
+          { icon: Activity, label: 'Health', value: cs.healthScore, color: healthColor, suffix: '/100' },
+          { icon: Clock, label: 'Days to deadline', value: days, color: days <= 3 ? t.danger : days <= 10 ? t.warning : t.text, suffix: 'd' },
+          { icon: DollarSign, label: 'Monthly income', value: `$${cs.monthlyIncome.toLocaleString()}`, color: t.text },
+          { icon: Scale, label: 'Means test', value: cs.meansTestResult.toUpperCase(), color: cs.meansTestResult === 'pass' ? t.success : cs.meansTestResult === 'fail' ? t.danger : t.warning, mono: true },
+        ].map((m, i) => (
+          <div key={i} style={{
+            background: t.bgElevated, border: `1px solid ${t.border}`,
+            borderRadius: 12, padding: '14px 16px',
           }}>
-            <Upload size={13} />
-            Drop documents here or click to upload
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <m.icon size={13} color={t.textMuted} />
+              <span style={{ fontSize: 10.5, color: t.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{m.label}</span>
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 600, color: m.color, fontFamily: m.mono ? 'Geist Mono, monospace' : 'Onest, sans-serif', letterSpacing: '-0.02em' }}>
+              {m.value}{m.suffix && <span style={{ fontSize: 13, color: t.textSubtle, marginLeft: 2 }}>{m.suffix}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Main: documents + sidebar */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14 }}>
+        {/* Documents */}
+        <div style={{ background: t.bgElevated, border: `1px solid ${t.border}`, borderRadius: 14, padding: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <FileSearch size={14} color={t.textMuted} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Documents</span>
+              <span style={{ fontSize: 11, color: t.textSubtle, fontFamily: 'Geist Mono, monospace' }}>{cs.documents.length}</span>
+            </div>
+            <button style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '5px 11px', borderRadius: 7,
+              background: t.surface, border: `1px solid ${t.border}`, color: t.textMuted,
+              fontSize: 11, fontWeight: 500, cursor: 'pointer',
+            }}>
+              <Upload size={11} /> Upload
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {cs.documents.map((d, i) => (
+              <motion.div key={d.id}
+                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                style={{
+                  padding: 12, borderRadius: 10,
+                  background: t.surface, border: `1px solid ${t.border}`,
+                }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: 7,
+                      background: theme === 'dark' ? 'rgba(96,165,250,0.12)' : '#dbeafe',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    }}>
+                      <FileText size={13} color={t.info} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.name}</div>
+                      <div style={{ fontSize: 10.5, color: t.textSubtle, fontFamily: 'Geist Mono, monospace', marginTop: 1, textTransform: 'capitalize' }}>
+                        {d.type.replace('_', ' ')} · {d.uploadedAt}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 11, color: t.textMuted, fontFamily: 'Geist Mono, monospace' }}>
+                      {Math.round((d.confidence || 0) * 100)}%
+                    </span>
+                    <span style={{
+                      fontSize: 10, padding: '2px 7px', borderRadius: 5, fontWeight: 600,
+                      background: d.status === 'verified' ? (theme === 'dark' ? 'rgba(52,211,153,0.12)' : '#d1fae5') :
+                                  d.status === 'flagged' ? (theme === 'dark' ? 'rgba(251,191,36,0.12)' : '#fef3c7') :
+                                  theme === 'dark' ? 'rgba(96,165,250,0.12)' : '#dbeafe',
+                      color: d.status === 'verified' ? t.success : d.status === 'flagged' ? t.warning : t.info,
+                      fontFamily: 'Geist Mono, monospace',
+                    }}>
+                      {d.status.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+                {d.extractedFields && Object.keys(d.extractedFields).length > 0 && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${t.border}`, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {Object.entries(d.extractedFields).map(([k, v]: [string, any]) => (
+                      <div key={k} style={{
+                        fontSize: 10.5, padding: '3px 8px', borderRadius: 5,
+                        background: v.flagged ? (theme === 'dark' ? 'rgba(248,113,113,0.1)' : '#fef2f2') : t.bgElevated,
+                        border: `1px solid ${v.flagged ? (theme === 'dark' ? 'rgba(248,113,113,0.3)' : '#fecaca') : t.border}`,
+                        color: v.flagged ? t.danger : t.textMuted,
+                        fontFamily: 'Geist Mono, monospace',
+                      }}>
+                        <span style={{ color: t.textSubtle }}>{k}:</span> <span style={{ color: v.flagged ? t.danger : t.text, fontWeight: 600 }}>{typeof v.value === 'number' ? v.value.toLocaleString() : v.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            ))}
           </div>
         </div>
 
-        {/* Missing + Team */}
-        <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 18 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 12 }}>Missing Documents</div>
-          {c.missingDocs.length === 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5F4F86', marginBottom: 16 }}>
-              <CheckCircle2 size={15} />
-              All documents collected
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 16 }}>
-              {c.missingDocs.map((doc, i) => (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 12px', borderRadius: 8, background: '#fff7ed',
-                }}>
-                  <AlertTriangle size={12} color="#b45309" style={{ flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: '#92400e' }}>{doc}</span>
+        {/* Right column */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Missing docs */}
+          {cs.missingDocs.length > 0 && (
+            <div style={{
+              background: t.bgElevated,
+              border: `1px solid ${theme === 'dark' ? 'rgba(248,113,113,0.25)' : '#fecaca'}`,
+              borderRadius: 12, padding: 16,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+                <AlertTriangle size={13} color={t.danger} />
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: t.danger }}>Missing Documents</span>
+                <span style={{ fontSize: 11, color: t.danger, fontFamily: 'Geist Mono, monospace' }}>{cs.missingDocs.length}</span>
+              </div>
+              {cs.missingDocs.map(d => (
+                <div key={d} style={{ fontSize: 12, color: t.text, padding: '5px 0', display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: t.danger }} />
+                  {d}
                 </div>
               ))}
             </div>
           )}
 
-          <div style={{ borderTop: '1px solid #f0f3ff', paddingTop: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 10 }}>Case Team</div>
-            {[{ role: 'Paralegal', name: c.paralegal }, { role: 'Attorney', name: c.attorney }].map(({ role, name }) => (
-              <div key={role} style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
+          {/* People */}
+          <div style={{ background: t.bgElevated, border: `1px solid ${t.border}`, borderRadius: 12, padding: 16 }}>
+            <div style={{ fontSize: 10.5, color: t.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.06em', marginBottom: 10, textTransform: 'uppercase' }}>
+              Case Team
+            </div>
+            {[
+              { label: 'Paralegal', name: cs.paralegal },
+              { label: 'Attorney', name: cs.attorney },
+            ].map((p, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
                 <div style={{
-                  width: 28, height: 28, borderRadius: '50%', background: '#ede8f8', color: '#5F4F86',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, flexShrink: 0,
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: i === 0 ? t.gradient : t.accent,
+                  color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 600,
                 }}>
-                  {name.split(' ').map((n: string) => n[0]).join('')}
+                  {p.name.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: '#333' }}>{name}</div>
-                  <div style={{ fontSize: 11, color: '#bbb' }}>{role}</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: t.text }}>{p.name}</div>
+                  <div style={{ fontSize: 10, color: t.textSubtle, fontFamily: 'Geist Mono, monospace' }}>{p.label}</div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      </div>
 
-      {/* Notes */}
-      {c.notes && (
-        <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 18, marginBottom: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 8 }}>Notes</div>
-          <p style={{ fontSize: 13, color: '#555', lineHeight: 1.7, margin: 0 }}>{c.notes}</p>
+          {/* Notes */}
+          <div style={{ background: t.bgElevated, border: `1px solid ${t.border}`, borderRadius: 12, padding: 16 }}>
+            <div style={{ fontSize: 10.5, color: t.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.06em', marginBottom: 8, textTransform: 'uppercase' }}>
+              Notes
+            </div>
+            <div style={{ fontSize: 12, color: t.text, lineHeight: 1.55 }}>{cs.notes}</div>
+          </div>
         </div>
-      )}
-
-      {/* CTA */}
-      <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 2 }}>Ready to run PARALEX intelligence?</div>
-          <div style={{ fontSize: 12, color: '#888' }}>3 Groq agents analyze this case in parallel. Avg runtime: 8-12 seconds.</div>
-        </div>
-        <button onClick={() => navigate(`/case/${id}/agents`)} style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500,
-          background: '#5F4F86', color: '#fff', border: 'none', cursor: 'pointer',
-          fontFamily: 'Onest, Inter, sans-serif',
-        }}>
-          <Zap size={14} />
-          Launch Agents
-        </button>
       </div>
     </div>
   )

@@ -1,158 +1,357 @@
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { EVAL_METRICS } from '../lib/mockData'
-import { TrendingUp, Zap, CheckCircle2, Clock, Brain, Target } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { motion } from 'framer-motion'
+import {
+  TrendingUp, Clock, DollarSign, Target, Zap, Brain, FileSearch, Scale, FilePen, AlertCircle,
+  ArrowUpRight, Activity, Award
+} from 'lucide-react'
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart,
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend, BarChart, Bar
+} from 'recharts'
+import { useTheme } from '../contexts/ThemeContext'
 
-const Tip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null
+const WEEKS = ['W-7', 'W-6', 'W-5', 'W-4', 'W-3', 'W-2', 'W-1', 'Now']
+
+const TREND = WEEKS.map((w, i) => ({
+  week: w,
+  Document: 84 + i * 1.4 + Math.sin(i) * 1.2,
+  Compliance: 78 + i * 1.8 + Math.cos(i) * 1.5,
+  Generation: 80 + i * 1.6 + Math.sin(i * 1.4) * 1.8,
+  Anomaly: 76 + i * 2.1 + Math.cos(i * 0.8) * 2.0,
+}))
+
+const ROI_DATA = WEEKS.map((w, i) => ({
+  week: w,
+  manual: 326,
+  paralex: 11 + Math.sin(i) * 2,
+  saved: 326 - (11 + Math.sin(i) * 2),
+}))
+
+const FIELDS = [
+  { name: 'Income', accepted: 94, corrected: 6 },
+  { name: 'Assets', accepted: 91, corrected: 9 },
+  { name: 'Debts', accepted: 88, corrected: 12 },
+  { name: 'Expenses', accepted: 85, corrected: 15 },
+  { name: 'Exemptions', accepted: 79, corrected: 21 },
+  { name: 'Schedule J', accepted: 92, corrected: 8 },
+]
+
+const RADAR = [
+  { metric: 'Accuracy', Doc: 94, Comp: 89, Gen: 91, Anom: 86 },
+  { metric: 'Speed', Doc: 96, Comp: 82, Gen: 88, Anom: 90 },
+  { metric: 'Coverage', Doc: 88, Comp: 92, Gen: 90, Anom: 84 },
+  { metric: 'Confidence', Doc: 91, Comp: 87, Gen: 89, Anom: 82 },
+  { metric: 'Auto-accept', Doc: 92, Comp: 78, Gen: 86, Anom: 75 },
+]
+
+function MetricCard({ label, value, sub, icon: Icon, change, accent }: any) {
+  const { c, theme } = useTheme()
   return (
-    <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 8, padding: '8px 12px', fontSize: 11 }}>
-      <div style={{ fontWeight: 500, color: '#111', marginBottom: 4 }}>{label}</div>
-      {payload.map((p: any) => (
-        <div key={p.name} style={{ color: p.color }}>{p.name}: {p.value}{p.name.includes('Accuracy') || p.name.includes('%') ? '%' : ''}</div>
-      ))}
+    <div style={{
+      background: c.bgElevated, border: `1px solid ${c.border}`,
+      borderRadius: 14, padding: '18px 20px', position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, width: 80, height: 80,
+        background: `radial-gradient(circle, ${accent}22, transparent 70%)`, borderRadius: '50%' }} />
+      <div style={{
+        width: 34, height: 34, borderRadius: 9,
+        background: theme === 'dark' ? `${accent}1f` : `${accent}1f`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        border: `1px solid ${accent}33`, marginBottom: 14,
+      }}>
+        <Icon size={16} color={accent} />
+      </div>
+      <div style={{ fontFamily: 'Onest, sans-serif', fontSize: 28, fontWeight: 600, color: c.text, letterSpacing: '-0.02em', lineHeight: 1 }}>
+        {value}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+        <div style={{ fontSize: 12, color: c.textMuted }}>{label}</div>
+        {change !== undefined && (
+          <div style={{
+            fontSize: 11, fontWeight: 600, color: change >= 0 ? c.success : c.danger,
+            fontFamily: 'Geist Mono, monospace',
+            display: 'flex', alignItems: 'center', gap: 2,
+          }}>
+            <ArrowUpRight size={11} style={{ transform: change < 0 ? 'rotate(90deg)' : 'none' }} />
+            {Math.abs(change)}%
+          </div>
+        )}
+      </div>
+      {sub && <div style={{ fontSize: 10.5, color: c.textSubtle, marginTop: 2, fontFamily: 'Geist Mono, monospace' }}>{sub}</div>}
+    </div>
+  )
+}
+
+// Heatmap cell
+function HeatCell({ value, max }: { value: number; max: number }) {
+  const { c, theme } = useTheme()
+  const intensity = value / max
+  const bg = theme === 'dark'
+    ? `rgba(167, 139, 250, ${0.08 + intensity * 0.6})`
+    : `rgba(95, 79, 134, ${0.08 + intensity * 0.4})`
+  return (
+    <div style={{
+      flex: 1, height: 32, borderRadius: 5,
+      background: bg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 10, fontWeight: 600, color: intensity > 0.5 ? '#fff' : c.text,
+      fontFamily: 'Geist Mono, monospace',
+      border: `1px solid ${c.border}`,
+    }}>
+      {value}
     </div>
   )
 }
 
 export default function EvalDashboard() {
-  const latest = EVAL_METRICS[EVAL_METRICS.length - 1]
-  const prev = EVAL_METRICS[EVAL_METRICS.length - 2]
-  const totalHrs = EVAL_METRICS.reduce((s, m) => s + m.timeSavedHours, 0)
-  const totalCases = EVAL_METRICS.reduce((s, m) => s + m.casesProcessed, 0)
-  const totalFields = EVAL_METRICS.reduce((s, m) => s + m.fieldsAutoFilled, 0)
-  const totalCorrections = EVAL_METRICS.reduce((s, m) => s + m.fieldsCorreected, 0)
-  const acceptance = Math.round(totalFields / (totalFields + totalCorrections) * 100)
-  const roi = totalHrs * 45
+  const { c, theme } = useTheme()
+  const [range, setRange] = useState<'7d' | '30d' | '90d'>('30d')
 
-  const stats = [
-    { l: 'Current Accuracy', v: `${latest.accuracy}%`, sub: `+${latest.accuracy - prev.accuracy}% vs last week`, icon: Target, color: '#5F4F86', bg: '#ede8f8' },
-    { l: 'Field Acceptance', v: `${acceptance}%`, sub: 'auto-filled and accepted', icon: CheckCircle2, color: '#0369a1', bg: '#dbeafe' },
-    { l: 'Total Hours Saved', v: totalHrs, sub: 'across 8 weeks', icon: Clock, color: '#7c3aed', bg: '#ede9fe' },
-    { l: 'Cases Processed', v: totalCases, sub: 'by PARALEX agents', icon: Brain, color: '#b45309', bg: '#fef3c7' },
-    { l: 'Fields Auto-Filled', v: totalFields.toLocaleString(), sub: 'total across all cases', icon: Zap, color: '#5F4F86', bg: '#ede8f8' },
-    { l: 'This Week', v: latest.casesProcessed, sub: `${latest.timeSavedHours}h saved`, icon: TrendingUp, color: '#4a3d6e', bg: '#ddd6f5' },
-  ]
+  // Synthetic heatmap data: 7 days x 6 agents
+  const heatmap = useMemo(() => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    const agents = ['Doc', 'Comp', 'Gen', 'Anom']
+    const rows = agents.map(a => ({
+      agent: a,
+      values: days.map((_, i) => Math.round(60 + Math.sin(i + a.length) * 20 + Math.random() * 15)),
+    }))
+    const max = Math.max(...rows.flatMap(r => r.values))
+    return { days, rows, max }
+  }, [])
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontFamily: 'Onest, sans-serif', fontSize: 22, fontWeight: 500, color: '#111', letterSpacing: '-0.02em', margin: 0 }}>
-          Eval Dashboard
-        </h1>
-        <p style={{ fontSize: 13, color: '#888', margin: '4px 0 0' }}>
-          Agent accuracy, field acceptance rates, and time savings over time
-        </p>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 24 }}>
-        {stats.map(({ l, v, sub, icon: Icon, color, bg }) => (
-          <div key={l} style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: '14px 16px' }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-              <Icon size={14} color={color} />
-            </div>
-            <div style={{ fontFamily: 'Onest, sans-serif', fontSize: 22, fontWeight: 500, color: '#111', lineHeight: 1 }}>{v}</div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: '#444', marginTop: 4 }}>{l}</div>
-            <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Charts row 1 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-        <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 500, color: '#111' }}>Agent Accuracy Over Time</span>
-            <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: '#ede8f8', color: '#5F4F86', fontFamily: 'Geist Mono, monospace' }}>
-              8 week trend
+    <div style={{ padding: '24px 28px', minHeight: '100%' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 22 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 11, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Evaluation
             </span>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={EVAL_METRICS} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f3ff" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#bbb' }} />
-              <YAxis domain={[80, 100]} tick={{ fontSize: 10, fill: '#bbb' }} />
-              <Tooltip content={<Tip />} />
-              <Line type="monotone" dataKey="accuracy" name="Accuracy %" stroke="#5F4F86" strokeWidth={2} dot={{ r: 3, fill: '#5F4F86' }} />
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 600, color: c.text, letterSpacing: '-0.02em' }}>
+            Eval Command Center
+          </h1>
+          <div style={{ fontSize: 13, color: c.textMuted, marginTop: 3 }}>
+            Agent accuracy, time saved, and trust signals across all production runs
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', background: c.surface, border: `1px solid ${c.border}`, borderRadius: 9, padding: 2 }}>
+          {(['7d', '30d', '90d'] as const).map(r => (
+            <button key={r} onClick={() => setRange(r)} style={{
+              padding: '6px 14px', fontSize: 12, fontWeight: 500,
+              background: range === r ? c.bgElevated : 'transparent',
+              border: 'none', borderRadius: 7, cursor: 'pointer',
+              color: range === r ? c.text : c.textMuted,
+              boxShadow: range === r ? c.shadow : 'none',
+              fontFamily: 'Geist Mono, monospace',
+            }}>{r}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Top metrics */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+        <MetricCard label="Overall accuracy" value="94.2%" sub="across 12,847 runs" icon={Target} change={4} accent="#10b981" />
+        <MetricCard label="Time saved / case" value="5.2 hrs" sub="vs 6.1 hrs manual" icon={Clock} change={18} accent="#3b82f6" />
+        <MetricCard label="Auto-accept rate" value="87%" sub="fields not corrected" icon={Zap} change={6} accent="#a78bfa" />
+        <MetricCard label="Cost saved / mo" value="$14.6K" sub="per 60-case firm" icon={DollarSign} change={23} accent="#f97316" />
+      </div>
+
+      {/* Charts row 1: trend + radar */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 16 }}>
+        {/* Accuracy trend */}
+        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Agent Accuracy Over Time</div>
+              <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>Per-agent accuracy %, weekly aggregation</div>
+            </div>
+            <div style={{ display: 'flex', gap: 12, fontSize: 10.5 }}>
+              {[{ name: 'Document', color: '#3b82f6' }, { name: 'Compliance', color: '#a855f7' }, { name: 'Generation', color: '#10b981' }, { name: 'Anomaly', color: '#f97316' }].map(s => (
+                <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 5, color: c.textMuted }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.color }} />
+                  {s.name}
+                </div>
+              ))}
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={TREND} margin={{ top: 4, right: 4, bottom: 4, left: -8 }}>
+              <CartesianGrid stroke={c.border} strokeDasharray="3 3" />
+              <XAxis dataKey="week" stroke={c.textSubtle} tick={{ fontSize: 10, fontFamily: 'Geist Mono, monospace' }} />
+              <YAxis stroke={c.textSubtle} tick={{ fontSize: 10, fontFamily: 'Geist Mono, monospace' }} domain={[70, 100]} />
+              <Tooltip contentStyle={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 8, fontSize: 11 }} />
+              <Line type="monotone" dataKey="Document" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: '#3b82f6' }} />
+              <Line type="monotone" dataKey="Compliance" stroke="#a855f7" strokeWidth={2} dot={{ r: 3, fill: '#a855f7' }} />
+              <Line type="monotone" dataKey="Generation" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: '#10b981' }} />
+              <Line type="monotone" dataKey="Anomaly" stroke="#f97316" strokeWidth={2} dot={{ r: 3, fill: '#f97316' }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
-        <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 500, color: '#111' }}>Hours Saved Per Week</span>
-            <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: '#ede9fe', color: '#7c3aed', fontFamily: 'Geist Mono, monospace' }}>
-              vs. 4.5h manual baseline
-            </span>
+        {/* Agent capability radar */}
+        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20 }}>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Agent Capability Profile</div>
+            <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>Normalized scores across 5 dimensions</div>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={EVAL_METRICS} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f3ff" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#bbb' }} />
-              <YAxis tick={{ fontSize: 10, fill: '#bbb' }} />
-              <Tooltip content={<Tip />} />
-              <Bar dataKey="timeSavedHours" name="Hours Saved" fill="#5F4F86" radius={[3, 3, 0, 0]} />
-            </BarChart>
+          <ResponsiveContainer width="100%" height={240}>
+            <RadarChart data={RADAR}>
+              <PolarGrid stroke={c.border} />
+              <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10, fill: c.textMuted, fontFamily: 'Geist Mono, monospace' }} />
+              <PolarRadiusAxis tick={{ fontSize: 9, fill: c.textSubtle }} stroke={c.border} />
+              <Radar name="Doc" dataKey="Doc" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} strokeWidth={1.5} />
+              <Radar name="Comp" dataKey="Comp" stroke="#a855f7" fill="#a855f7" fillOpacity={0.2} strokeWidth={1.5} />
+              <Radar name="Gen" dataKey="Gen" stroke="#10b981" fill="#10b981" fillOpacity={0.2} strokeWidth={1.5} />
+              <Radar name="Anom" dataKey="Anom" stroke="#f97316" fill="#f97316" fillOpacity={0.2} strokeWidth={1.5} />
+            </RadarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Charts row 2 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 500, color: '#111' }}>Auto-Fill vs Corrections</span>
-            <span style={{ fontSize: 11, color: '#aaa' }}>Fields auto-accepted vs manually corrected</span>
+      {/* Row 2: ROI area + heatmap */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        {/* ROI hours saved */}
+        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20 }}>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Hours Saved Per Week</div>
+            <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>Manual baseline vs PARALEX execution</div>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={EVAL_METRICS} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f3ff" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#bbb' }} />
-              <YAxis tick={{ fontSize: 10, fill: '#bbb' }} />
-              <Tooltip content={<Tip />} />
-              <Bar dataKey="fieldsAutoFilled" name="Auto-accepted" fill="#5F4F86" radius={[2, 2, 0, 0]} stackId="a" />
-              <Bar dataKey="fieldsCorreected" name="Corrected" fill="#fca5a5" radius={[2, 2, 0, 0]} stackId="a" />
-            </BarChart>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={ROI_DATA} margin={{ top: 4, right: 4, bottom: 4, left: -8 }}>
+              <defs>
+                <linearGradient id="grad-saved" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke={c.border} strokeDasharray="3 3" />
+              <XAxis dataKey="week" stroke={c.textSubtle} tick={{ fontSize: 10, fontFamily: 'Geist Mono, monospace' }} />
+              <YAxis stroke={c.textSubtle} tick={{ fontSize: 10, fontFamily: 'Geist Mono, monospace' }} />
+              <Tooltip contentStyle={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 8, fontSize: 11 }} />
+              <Area type="monotone" dataKey="saved" stroke="#10b981" strokeWidth={2} fill="url(#grad-saved)" />
+            </AreaChart>
           </ResponsiveContainer>
-          <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#555' }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, background: '#5F4F86' }} />
-              Auto-accepted
+          <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 12, padding: 10, background: c.surface, borderRadius: 9 }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>MANUAL</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>326h</div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#555' }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, background: '#fca5a5' }} />
-              Manually corrected
+            <div style={{ width: 1, background: c.border }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>PARALEX</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>11h</div>
+            </div>
+            <div style={{ width: 1, background: c.border }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>SAVED</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: c.success }}>96.6%</div>
             </div>
           </div>
         </div>
 
-        <div style={{ background: '#fff', border: '1px solid #eaeaea', borderRadius: 12, padding: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 16 }}>Business Impact Summary</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {[
-              { l: 'Paralegal hours saved (8 weeks)', v: `${totalHrs} hours`, pct: 85, c: '#5F4F86' },
-              { l: 'At $45/hr fully loaded cost', v: `$${roi.toLocaleString()} saved`, pct: 85, c: '#0369a1' },
-              { l: 'Annualized for this firm', v: `~$${Math.round(roi * 6.5 / 1000)}K/year`, pct: 90, c: '#7c3aed' },
-              { l: 'Scaled to 200 Glade firms', v: `~$${Math.round(roi * 6.5 * 200 / 1000000)}M/year`, pct: 95, c: '#b45309' },
-            ].map(({ l, v, pct, c }) => (
-              <div key={l}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 12 }}>
-                  <span style={{ color: '#666' }}>{l}</span>
-                  <span style={{ fontFamily: 'Geist Mono, monospace', fontWeight: 500, color: c }}>{v}</span>
-                </div>
-                <div style={{ height: 4, borderRadius: 2, background: '#f0f3ff' }}>
-                  <div style={{ height: '100%', borderRadius: 2, background: c, width: `${pct}%` }} />
-                </div>
+        {/* Accuracy heatmap by day */}
+        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20 }}>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Run Volume Heatmap</div>
+            <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>Agent runs per day of week, last 30 days</div>
+          </div>
+          {/* Heatmap grid */}
+          <div>
+            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
+              <div />
+              {heatmap.days.map(d => (
+                <div key={d} style={{ fontSize: 9.5, color: c.textSubtle, textAlign: 'center', fontFamily: 'Geist Mono, monospace' }}>{d}</div>
+              ))}
+            </div>
+            {heatmap.rows.map(row => (
+              <div key={row.agent} style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
+                <div style={{ fontSize: 11, color: c.textMuted, display: 'flex', alignItems: 'center', fontFamily: 'Geist Mono, monospace' }}>{row.agent}</div>
+                {row.values.map((v, i) => <HeatCell key={i} value={v} max={heatmap.max} />)}
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 16, padding: '14px 16px', borderRadius: 10, background: '#ede8f8' }}>
-            <div style={{ fontSize: 11, fontWeight: 500, color: '#4a3d6e', marginBottom: 2 }}>Total 8-week ROI</div>
-            <div style={{ fontFamily: 'Onest, sans-serif', fontSize: 26, fontWeight: 500, color: '#5F4F86' }}>
-              ${roi.toLocaleString()}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, fontSize: 10.5, color: c.textMuted, fontFamily: 'Geist Mono, monospace' }}>
+            <span>Low</span>
+            <div style={{ flex: 1, height: 8, borderRadius: 4, background: `linear-gradient(to right, ${theme === 'dark' ? 'rgba(167,139,250,0.08)' : 'rgba(95,79,134,0.08)'}, ${theme === 'dark' ? 'rgba(167,139,250,0.7)' : 'rgba(95,79,134,0.5)'})` }} />
+            <span>High</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 3: field-level trust + ROI calc */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
+        {/* Field-level trust */}
+        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20 }}>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Field-Level Trust Score</div>
+            <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>What paralegals accept vs correct, last 1,000 runs</div>
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={FIELDS} margin={{ top: 4, right: 4, bottom: 4, left: -8 }}>
+              <CartesianGrid stroke={c.border} strokeDasharray="3 3" />
+              <XAxis dataKey="name" stroke={c.textSubtle} tick={{ fontSize: 10, fontFamily: 'Geist Mono, monospace' }} />
+              <YAxis stroke={c.textSubtle} tick={{ fontSize: 10, fontFamily: 'Geist Mono, monospace' }} />
+              <Tooltip contentStyle={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 8, fontSize: 11 }} />
+              <Bar dataKey="accepted" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="corrected" stackId="a" fill="#f87171" radius={[5, 5, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+          <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 11, color: c.textMuted }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: '#10b981' }} /> Accepted
             </div>
-            <div style={{ fontSize: 11, color: '#34a85a', marginTop: 2 }}>
-              across {totalCases} cases processed by PARALEX
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: '#f87171' }} /> Corrected
+            </div>
+          </div>
+        </div>
+
+        {/* Impact calculator */}
+        <div style={{ background: c.gradient, borderRadius: 14, padding: 1 }}>
+          <div style={{ background: c.bgElevated, borderRadius: 13, padding: 20 }}>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+                <Award size={14} color={c.accent} />
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Firm Impact at Scale</span>
+              </div>
+              <div style={{ fontSize: 11, color: c.textMuted }}>Projected annual savings</div>
+            </div>
+
+            {[
+              { size: 'Small (3 paralegals)', cases: '60/mo', savings: '$176K', accent: '#3b82f6' },
+              { size: 'Mid (6 paralegals)', cases: '140/mo', savings: '$411K', accent: '#a855f7' },
+              { size: 'Large (12 paralegals)', cases: '300/mo', savings: '$880K', accent: '#10b981' },
+            ].map((tier, i) => (
+              <motion.div key={tier.size}
+                initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '12px 14px', borderRadius: 10, marginBottom: 8,
+                  background: c.surface, border: `1px solid ${c.border}`,
+                  position: 'relative', overflow: 'hidden',
+                }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: tier.accent }} />
+                <div style={{ paddingLeft: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: c.text }}>{tier.size}</div>
+                  <div style={{ fontSize: 10.5, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginTop: 1 }}>{tier.cases}</div>
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 600, color: tier.accent, fontFamily: 'Geist Mono, monospace' }}>{tier.savings}</div>
+              </motion.div>
+            ))}
+
+            <div style={{
+              marginTop: 12, padding: '12px 14px',
+              borderRadius: 10, background: c.surface,
+              border: `1px dashed ${c.accent}`,
+            }}>
+              <div style={{ fontSize: 10.5, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginBottom: 3 }}>200 FIRMS DEPLOYED</div>
+              <div style={{ fontSize: 22, fontWeight: 600, color: c.text, letterSpacing: '-0.02em' }}>
+                $88M–$176M
+              </div>
+              <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>annual value created</div>
             </div>
           </div>
         </div>
