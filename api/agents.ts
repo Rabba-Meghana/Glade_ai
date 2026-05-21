@@ -17,7 +17,7 @@ export async function runDocumentAgent(
     messages: [
       {
         role: 'system',
-        content: `You are AXIOM Document Intelligence Agent for Glade AI - a legal document extraction specialist for bankruptcy law firms.
+        content: `You are PARALEX Document Intelligence Agent for PARALEX - a legal document extraction specialist for bankruptcy law firms.
 
 Your job: Extract and validate financial data from bankruptcy client documents with surgical precision.
 
@@ -88,7 +88,7 @@ export async function runComplianceAgent(
     messages: [
       {
         role: 'system',
-        content: `You are AXIOM Compliance Agent for Glade AI - a bankruptcy law compliance specialist.
+        content: `You are PARALEX Compliance Agent for PARALEX - a bankruptcy law compliance specialist.
 
 State: ${state} | Chapter: ${chapter}
 Illinois Means Test Thresholds (2026): 1 person: $58,000 | 2 person: $76,000 | 4 person: $98,000
@@ -157,7 +157,7 @@ export async function runAnomalyAgent(
     messages: [
       {
         role: 'system',
-        content: `You are AXIOM Anomaly Detection Agent for Glade AI - a forensic financial analyst specializing in bankruptcy fraud detection and data inconsistency identification.
+        content: `You are PARALEX Anomaly Detection Agent for PARALEX - a forensic financial analyst specializing in bankruptcy fraud detection and data inconsistency identification.
 
 Your job: Cross-reference all data sources, find contradictions, flag suspicious patterns, identify risks that could jeopardize the filing.
 
@@ -220,7 +220,7 @@ export async function runOrchestratorAgent(
     messages: [
       {
         role: 'system',
-        content: `You are AXIOM Master Orchestrator for Glade AI - the final synthesis agent that assembles bankruptcy petition data and provides actionable case guidance.
+        content: `You are PARALEX Master Orchestrator for PARALEX - the final synthesis agent that assembles bankruptcy petition data and provides actionable case guidance.
 
 You receive findings from 3 specialist agents and produce the final petition draft + paralegal action plan.
 

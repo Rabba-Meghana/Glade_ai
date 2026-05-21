@@ -38,7 +38,7 @@ Filing Deadline: ${caseData.filingDeadline}
       ? documents.map((d: any) => `- ${d.name} (${d.type}): ${d.status}`).join('\n')
       : 'No documents uploaded yet. Running analysis on case context only.'
 
-    send({ type: 'start', message: 'AXIOM agents initializing...' })
+    send({ type: 'start', message: 'PARALEX agents initializing...' })
 
     let docResults: any = {}
     let compResults: any = {}
@@ -52,7 +52,7 @@ Filing Deadline: ${caseData.filingDeadline}
       messages: [
         {
           role: 'system',
-          content: `You are AXIOM Document Intelligence Agent for Glade AI, a legal document extraction specialist for bankruptcy law firms.
+          content: `You are PARALEX Document Intelligence Agent for PARALEX, a legal document extraction specialist for bankruptcy law firms.
 Extract financial data from bankruptcy documents with surgical precision.
 Respond ONLY with valid JSON in this exact structure:
 {
@@ -97,7 +97,7 @@ Respond ONLY with valid JSON in this exact structure:
       messages: [
         {
           role: 'system',
-          content: `You are AXIOM Compliance Agent for Glade AI, a bankruptcy law compliance specialist.
+          content: `You are PARALEX Compliance Agent for PARALEX, a bankruptcy law compliance specialist.
 Illinois Means Test 2026: 1 person $58,000 | 2 person $76,000 | 4 person $98,000
 Respond ONLY with valid JSON:
 {
@@ -137,7 +137,7 @@ Respond ONLY with valid JSON:
       messages: [
         {
           role: 'system',
-          content: `You are AXIOM Anomaly Detection Agent for Glade AI, a forensic financial analyst.
+          content: `You are PARALEX Anomaly Detection Agent for PARALEX, a forensic financial analyst.
 Find contradictions, suspicious patterns, data inconsistencies in bankruptcy cases.
 Respond ONLY with valid JSON:
 {
@@ -177,7 +177,7 @@ Respond ONLY with valid JSON:
       messages: [
         {
           role: 'system',
-          content: `You are AXIOM Master Orchestrator for Glade AI. Synthesize all agent findings into a complete petition draft.
+          content: `You are PARALEX Master Orchestrator for PARALEX. Synthesize all agent findings into a complete petition draft.
 Respond ONLY with valid JSON:
 {
   "scheduleI": {"grossMonthlyIncome": number, "payrollDeductions": number, "netMonthlyIncome": number, "otherIncome": number, "totalMonthlyIncome": number, "employer": "string", "occupation": "string"},

@@ -1,151 +1,203 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ArrowLeft, Brain, Clock, AlertTriangle, CheckCircle2, FileText, Upload, Zap, ChevronRight, TrendingUp, User, Scale } from 'lucide-react'
+import { ArrowLeft, Brain, Clock, AlertTriangle, CheckCircle2, FileText, Upload, Zap, TrendingUp, Scale, ChevronRight, User } from 'lucide-react'
 import { MOCK_CASES } from '../lib/mockData'
 
 function daysUntil(d: string) { return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) }
+
+const STATUS_STEPS = ['intake', 'retain', 'collecting', 'drafting', 'review', 'filed']
 
 export default function CaseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const c = MOCK_CASES.find(x => x.id === id)
-
-  if (!c) return <div className="p-8 text-sm" style={{ color: '#888' }}>Case not found.</div>
+  if (!c) return <div style={{ padding: 32, color: '#888', fontSize: 13 }}>Case not found.</div>
 
   const days = daysUntil(c.filingDeadline)
-
-  const timeline = [
-    { label: 'Intake', done: true },
-    { label: 'Retain', done: ['retain','collecting','drafting','review','filed'].includes(c.status) },
-    { label: 'Documents', done: ['collecting','drafting','review','filed'].includes(c.status) },
-    { label: 'Draft', done: ['drafting','review','filed'].includes(c.status) },
-    { label: 'Review', done: ['review','filed'].includes(c.status) },
-    { label: 'Filed', done: c.status === 'filed' },
-  ]
+  const currentStep = STATUS_STEPS.indexOf(c.status)
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <button
-        onClick={() => navigate('/war-room')}
-        className="flex items-center gap-1.5 text-sm mb-5 hover:opacity-70 transition-opacity"
-        style={{ color: '#555' }}
-      >
+    <div style={{ padding: '28px 32px', maxWidth: 960, margin: '0 auto' }}>
+      {/* Back */}
+      <button onClick={() => navigate('/war-room')} style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        fontSize: 13, color: '#666', background: 'none', border: 'none',
+        cursor: 'pointer', padding: 0, marginBottom: 20, fontFamily: 'DM Sans, sans-serif',
+      }}>
         <ArrowLeft size={14} />
         Back to War Room
       </button>
 
-      <div className="glade-card p-5 mb-4">
-        <div className="flex items-start justify-between mb-4">
+      {/* Hero card */}
+      <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: 20, marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-lg font-display font-medium" style={{ color: '#111', letterSpacing: '-0.02em' }}>{c.clientName}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+              <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 500, color: '#111', margin: 0, letterSpacing: '-0.02em' }}>
+                {c.clientName}
+              </h1>
               {c.urgency === 'critical' && (
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#fee2e2', color: '#dc2626' }}>
+                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#fee2e2', color: '#dc2626', fontWeight: 500 }}>
                   Critical
                 </span>
               )}
             </div>
-            <div className="text-sm font-mono" style={{ color: '#888' }}>{c.caseNumber} | Chapter {c.chapter} | {c.state}</div>
+            <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: '#999' }}>
+              {c.caseNumber} &nbsp;|&nbsp; Chapter {c.chapter} &nbsp;|&nbsp; {c.state}
+            </div>
           </div>
-          <button
-            onClick={() => navigate(`/case/${id}/agents`)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
-            style={{ background: '#157040', color: 'white' }}
-          >
-            <Brain size={15} />
-            Run AXIOM Agents
+          <button onClick={() => navigate(`/case/${id}/agents`)} style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+            background: '#157040', color: '#fff', border: 'none', cursor: 'pointer',
+            fontFamily: 'DM Sans, sans-serif',
+          }}>
+            <Brain size={14} />
+            Run PARALEX Agents
             <ChevronRight size={13} />
           </button>
         </div>
 
-        <div className="flex items-center gap-1 mb-4">
-          {timeline.map((t, i) => (
-            <div key={t.label} className="flex items-center gap-1 flex-1">
-              <div className="flex flex-col items-center flex-1">
-                <div className={`w-full h-1 rounded-full ${t.done ? '' : ''}`} style={{ background: t.done ? '#157040' : '#e8e8e5' }} />
-                <span className="text-xs mt-1" style={{ color: t.done ? '#157040' : '#aaa' }}>{t.label}</span>
+        {/* Progress timeline */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginBottom: 20 }}>
+          {STATUS_STEPS.map((step, i) => {
+            const done = i <= currentStep
+            const active = i === currentStep
+            return (
+              <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+                {i < STATUS_STEPS.length - 1 && (
+                  <div style={{
+                    position: 'absolute', top: 6, left: '50%', width: '100%', height: 2,
+                    background: done && !active ? '#157040' : '#e8e8e5',
+                    zIndex: 0,
+                  }} />
+                )}
+                <div style={{
+                  width: 14, height: 14, borderRadius: '50%', zIndex: 1,
+                  background: done ? '#157040' : '#e8e8e5',
+                  border: active ? '2px solid #157040' : 'none',
+                  boxShadow: active ? '0 0 0 3px #d6f2e0' : 'none',
+                }} />
+                <span style={{ fontSize: 10, marginTop: 6, color: done ? '#157040' : '#bbb', fontWeight: done ? 500 : 400 }}>
+                  {step.charAt(0).toUpperCase() + step.slice(1)}
+                </span>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* Stats row */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { label: 'Case Health', value: `${c.healthScore}%`, icon: TrendingUp, color: c.healthScore >= 80 ? '#22c55e' : c.healthScore >= 50 ? '#f59e0b' : '#ef4444' },
-            { label: 'Filing Deadline', value: c.status === 'filed' ? 'Filed' : `${days}d`, icon: Clock, color: days <= 7 ? '#ef4444' : days <= 14 ? '#f59e0b' : '#157040' },
-            { label: 'Monthly Income', value: `$${c.monthlyIncome?.toLocaleString()}`, icon: TrendingUp, color: '#0369a1' },
-            { label: 'Total Debt', value: `$${((c.totalDebt || 0) / 1000).toFixed(0)}K`, icon: Scale, color: '#7c3aed' },
-          ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="p-3 rounded-xl" style={{ background: '#f8f8f6' }}>
-              <div className="text-xs mb-1" style={{ color: '#888' }}>{label}</div>
-              <div className="text-base font-display font-medium" style={{ color }}>{value}</div>
+            {
+              label: 'Case Health', icon: TrendingUp,
+              value: `${c.healthScore}%`,
+              color: c.healthScore >= 80 ? '#22c55e' : c.healthScore >= 50 ? '#f59e0b' : '#ef4444',
+            },
+            {
+              label: 'Filing Deadline', icon: Clock,
+              value: c.status === 'filed' ? 'Filed' : `${days}d`,
+              color: days <= 7 ? '#ef4444' : days <= 14 ? '#f59e0b' : '#157040',
+            },
+            {
+              label: 'Monthly Income', icon: TrendingUp,
+              value: `$${c.monthlyIncome?.toLocaleString()}`,
+              color: '#0369a1',
+            },
+            {
+              label: 'Total Debt', icon: Scale,
+              value: `$${((c.totalDebt || 0) / 1000).toFixed(0)}K`,
+              color: '#7c3aed',
+            },
+          ].map(({ label, icon: Icon, value, color }) => (
+            <div key={label} style={{ padding: '12px 14px', borderRadius: 10, background: '#f8f8f6' }}>
+              <div style={{ fontSize: 11, color: '#999', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontFamily: 'Fraunces, serif', fontSize: 18, fontWeight: 500, color }}>{value}</div>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 mb-4">
-        <div className="glade-card p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium" style={{ color: '#111' }}>Documents</h3>
-            <span className="text-xs font-mono" style={{ color: '#888' }}>{c.documents.length} uploaded</span>
+      {/* Two column */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        {/* Documents */}
+        <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: '#111' }}>Documents</span>
+            <span style={{ fontSize: 11, color: '#999', fontFamily: 'DM Mono, monospace' }}>{c.documents.length} uploaded</span>
           </div>
-
-          <div className="space-y-2 mb-3">
-            {c.documents.map(doc => (
-              <div key={doc.id} className="flex items-center gap-2.5 p-2.5 rounded-lg" style={{ background: '#f8f8f6' }}>
-                <FileText size={14} style={{ color: '#888', flexShrink: 0 }} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium truncate" style={{ color: '#333' }}>{doc.name}</div>
-                  <div className="text-xs" style={{ color: '#aaa' }}>{doc.type}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+            {c.documents.length === 0 ? (
+              <div style={{ fontSize: 12, color: '#bbb', textAlign: 'center', padding: '16px 0' }}>No documents yet</div>
+            ) : c.documents.map(doc => (
+              <div key={doc.id} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '9px 12px', borderRadius: 8, background: '#f8f8f6',
+              }}>
+                <FileText size={13} color="#aaa" style={{ flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.name}</div>
+                  <div style={{ fontSize: 11, color: '#bbb' }}>{doc.type.replace('_', ' ')}</div>
                 </div>
-                <div className="flex items-center gap-1 text-xs" style={{
-                  color: doc.status === 'verified' ? '#157040' : doc.status === 'flagged' ? '#b45309' : '#888'
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 4, fontSize: 11,
+                  color: doc.status === 'verified' ? '#157040' : doc.status === 'flagged' ? '#b45309' : '#888',
                 }}>
-                  {doc.status === 'verified' ? <CheckCircle2 size={12} /> : doc.status === 'flagged' ? <AlertTriangle size={12} /> : null}
+                  {doc.status === 'verified' ? <CheckCircle2 size={11} /> : doc.status === 'flagged' ? <AlertTriangle size={11} /> : null}
                   {doc.status}
                 </div>
                 {doc.confidence && (
-                  <span className="text-xs font-mono" style={{ color: '#aaa' }}>{Math.round(doc.confidence * 100)}%</span>
+                  <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: '#bbb' }}>
+                    {Math.round(doc.confidence * 100)}%
+                  </span>
                 )}
               </div>
             ))}
           </div>
-
-          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-dashed text-xs cursor-pointer hover:opacity-70 transition-opacity" style={{ borderColor: '#d1d5db', color: '#888' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 12px', borderRadius: 8,
+            border: '1px dashed #d1d5db', fontSize: 12, color: '#aaa', cursor: 'pointer',
+          }}>
             <Upload size={13} />
             Drop documents here or click to upload
           </div>
         </div>
 
-        <div className="glade-card p-4">
-          <h3 className="text-sm font-medium mb-3" style={{ color: '#111' }}>Missing Documents</h3>
+        {/* Missing + Team */}
+        <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: 18 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 12 }}>Missing Documents</div>
           {c.missingDocs.length === 0 ? (
-            <div className="flex items-center gap-2 text-sm py-4" style={{ color: '#157040' }}>
-              <CheckCircle2 size={16} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#157040', marginBottom: 16 }}>
+              <CheckCircle2 size={15} />
               All documents collected
             </div>
           ) : (
-            <div className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 16 }}>
               {c.missingDocs.map((doc, i) => (
-                <div key={i} className="flex items-center gap-2.5 p-2.5 rounded-lg" style={{ background: '#fff7ed' }}>
-                  <AlertTriangle size={13} style={{ color: '#b45309', flexShrink: 0 }} />
-                  <span className="text-xs" style={{ color: '#92400e' }}>{doc}</span>
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 12px', borderRadius: 8, background: '#fff7ed',
+                }}>
+                  <AlertTriangle size={12} color="#b45309" style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: '#92400e' }}>{doc}</span>
                 </div>
               ))}
             </div>
           )}
 
-          <div className="mt-4 pt-4 border-t" style={{ borderColor: '#e8e8e5' }}>
-            <h3 className="text-sm font-medium mb-3" style={{ color: '#111' }}>Case Team</h3>
+          <div style={{ borderTop: '1px solid #f0f0ee', paddingTop: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 10 }}>Case Team</div>
             {[{ role: 'Paralegal', name: c.paralegal }, { role: 'Attorney', name: c.attorney }].map(({ role, name }) => (
-              <div key={role} className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium" style={{ background: '#e6f5ed', color: '#157040' }}>
-                  {name.split(' ').map(n => n[0]).join('')}
+              <div key={role} style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', background: '#e6f5ed', color: '#157040',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, flexShrink: 0,
+                }}>
+                  {name.split(' ').map((n: string) => n[0]).join('')}
                 </div>
                 <div>
-                  <div className="text-xs font-medium" style={{ color: '#333' }}>{name}</div>
-                  <div className="text-xs" style={{ color: '#aaa' }}>{role}</div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: '#333' }}>{name}</div>
+                  <div style={{ fontSize: 11, color: '#bbb' }}>{role}</div>
                 </div>
               </div>
             ))}
@@ -153,28 +205,29 @@ export default function CaseDetail() {
         </div>
       </div>
 
+      {/* Notes */}
       {c.notes && (
-        <div className="glade-card p-4 mb-4">
-          <h3 className="text-sm font-medium mb-2" style={{ color: '#111' }}>Notes</h3>
-          <p className="text-sm" style={{ color: '#555', lineHeight: '1.6' }}>{c.notes}</p>
+        <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: 18, marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 8 }}>Notes</div>
+          <p style={{ fontSize: 13, color: '#555', lineHeight: 1.7, margin: 0 }}>{c.notes}</p>
         </div>
       )}
 
-      <div className="glade-card p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium mb-0.5" style={{ color: '#111' }}>Ready to run AXIOM intelligence?</div>
-            <div className="text-xs" style={{ color: '#888' }}>3 Groq agents will analyze this case in parallel. Estimated time: 8-12 seconds.</div>
-          </div>
-          <button
-            onClick={() => navigate(`/case/${id}/agents`)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
-            style={{ background: '#157040', color: 'white' }}
-          >
-            <Zap size={14} />
-            Launch Agents
-          </button>
+      {/* CTA */}
+      <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 2 }}>Ready to run PARALEX intelligence?</div>
+          <div style={{ fontSize: 12, color: '#888' }}>3 Groq agents analyze this case in parallel. Avg runtime: 8-12 seconds.</div>
         </div>
+        <button onClick={() => navigate(`/case/${id}/agents`)} style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+          background: '#157040', color: '#fff', border: 'none', cursor: 'pointer',
+          fontFamily: 'DM Sans, sans-serif',
+        }}>
+          <Zap size={14} />
+          Launch Agents
+        </button>
       </div>
     </div>
   )

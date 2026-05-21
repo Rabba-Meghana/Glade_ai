@@ -2,13 +2,13 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContai
 import { EVAL_METRICS } from '../lib/mockData'
 import { TrendingUp, Zap, CheckCircle2, Clock, Brain, Target } from 'lucide-react'
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="glade-card px-3 py-2 text-xs shadow-sm">
-      <div className="font-medium mb-1" style={{ color: '#111' }}>{label}</div>
+    <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 8, padding: '8px 12px', fontSize: 11 }}>
+      <div style={{ fontWeight: 500, color: '#111', marginBottom: 4 }}>{label}</div>
       {payload.map((p: any) => (
-        <div key={p.key} style={{ color: p.color }}>{p.name}: {p.value}{p.name.includes('Accuracy') ? '%' : ''}</div>
+        <div key={p.name} style={{ color: p.color }}>{p.name}: {p.value}{p.name.includes('Accuracy') || p.name.includes('%') ? '%' : ''}</div>
       ))}
     </div>
   )
@@ -17,124 +17,143 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function EvalDashboard() {
   const latest = EVAL_METRICS[EVAL_METRICS.length - 1]
   const prev = EVAL_METRICS[EVAL_METRICS.length - 2]
-  const totalTimeSaved = EVAL_METRICS.reduce((s, m) => s + m.timeSavedHours, 0)
+  const totalHrs = EVAL_METRICS.reduce((s, m) => s + m.timeSavedHours, 0)
   const totalCases = EVAL_METRICS.reduce((s, m) => s + m.casesProcessed, 0)
-  const totalAutoFilled = EVAL_METRICS.reduce((s, m) => s + m.fieldsAutoFilled, 0)
+  const totalFields = EVAL_METRICS.reduce((s, m) => s + m.fieldsAutoFilled, 0)
+  const totalCorrections = EVAL_METRICS.reduce((s, m) => s + m.fieldsCorreected, 0)
+  const acceptance = Math.round(totalFields / (totalFields + totalCorrections) * 100)
+  const roi = totalHrs * 45
 
-  const acceptanceRate = Math.round(
-    (EVAL_METRICS.reduce((s, m) => s + m.fieldsAutoFilled, 0) /
-    (EVAL_METRICS.reduce((s, m) => s + m.fieldsAutoFilled + m.fieldsCorreected, 0))) * 100
-  )
+  const stats = [
+    { l: 'Current Accuracy', v: `${latest.accuracy}%`, sub: `+${latest.accuracy - prev.accuracy}% vs last week`, icon: Target, color: '#157040', bg: '#e6f5ed' },
+    { l: 'Field Acceptance', v: `${acceptance}%`, sub: 'auto-filled and accepted', icon: CheckCircle2, color: '#0369a1', bg: '#dbeafe' },
+    { l: 'Total Hours Saved', v: totalHrs, sub: 'across 8 weeks', icon: Clock, color: '#7c3aed', bg: '#ede9fe' },
+    { l: 'Cases Processed', v: totalCases, sub: 'by PARALEX agents', icon: Brain, color: '#b45309', bg: '#fef3c7' },
+    { l: 'Fields Auto-Filled', v: totalFields.toLocaleString(), sub: 'total across all cases', icon: Zap, color: '#157040', bg: '#e6f5ed' },
+    { l: 'This Week', v: latest.casesProcessed, sub: `${latest.timeSavedHours}h saved`, icon: TrendingUp, color: '#166534', bg: '#bbf7d0' },
+  ]
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl font-display font-medium mb-0.5" style={{ color: '#111', letterSpacing: '-0.02em' }}>Eval Dashboard</h1>
-        <p className="text-sm" style={{ color: '#666' }}>Agent accuracy, field acceptance rates, and time savings over time</p>
+    <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 500, color: '#111', letterSpacing: '-0.02em', margin: 0 }}>
+          Eval Dashboard
+        </h1>
+        <p style={{ fontSize: 13, color: '#888', margin: '4px 0 0' }}>
+          Agent accuracy, field acceptance rates, and time savings over time
+        </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-6 sm:grid-cols-3 lg:grid-cols-6">
-        {[
-          { label: 'Current Accuracy', value: `${latest.accuracy}%`, sub: `+${latest.accuracy - prev.accuracy}% vs last week`, icon: Target, color: '#157040', bg: '#e6f5ed' },
-          { label: 'Field Acceptance', value: `${acceptanceRate}%`, sub: 'auto-filled & accepted', icon: CheckCircle2, color: '#0369a1', bg: '#e0f2fe' },
-          { label: 'Total Hours Saved', value: totalTimeSaved, sub: 'across 8 weeks', icon: Clock, color: '#7c3aed', bg: '#ede9fe' },
-          { label: 'Cases Processed', value: totalCases, sub: 'by AXIOM agents', icon: Brain, color: '#b45309', bg: '#fef3c7' },
-          { label: 'Fields Auto-Filled', value: totalAutoFilled.toLocaleString(), sub: 'total across all cases', icon: Zap, color: '#157040', bg: '#e6f5ed' },
-          { label: 'This Week', value: `${latest.casesProcessed}`, sub: `${latest.timeSavedHours}h saved`, icon: TrendingUp, color: '#166534', bg: '#bbf7d0' },
-        ].map(({ label, value, sub, icon: Icon, color, bg }) => (
-          <div key={label} className="glade-card p-3.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-2" style={{ background: bg }}>
-              <Icon size={14} style={{ color }} />
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 24 }}>
+        {stats.map(({ l, v, sub, icon: Icon, color, bg }) => (
+          <div key={l} style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+              <Icon size={14} color={color} />
             </div>
-            <div className="text-xl font-display font-medium" style={{ color: '#111' }}>{value}</div>
-            <div className="text-xs mt-0.5 font-medium" style={{ color: '#444' }}>{label}</div>
-            <div className="text-xs mt-0.5" style={{ color: '#aaa' }}>{sub}</div>
+            <div style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 500, color: '#111', lineHeight: 1 }}>{v}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: '#444', marginTop: 4 }}>{l}</div>
+            <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{sub}</div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 mb-4">
-        <div className="glade-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium" style={{ color: '#111' }}>Agent Accuracy Over Time</h3>
-            <span className="text-xs font-mono px-2 py-1 rounded-full" style={{ background: '#e6f5ed', color: '#157040' }}>8 week trend</span>
+      {/* Charts row 1 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: '#111' }}>Agent Accuracy Over Time</span>
+            <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: '#e6f5ed', color: '#157040', fontFamily: 'DM Mono, monospace' }}>
+              8 week trend
+            </span>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={EVAL_METRICS} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0ee" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#aaa' }} />
-              <YAxis domain={[80, 100]} tick={{ fontSize: 10, fill: '#aaa' }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Line type="monotone" dataKey="accuracy" stroke="#157040" strokeWidth={2} dot={{ r: 3, fill: '#157040' }} name="Accuracy %" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f3" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#bbb' }} />
+              <YAxis domain={[80, 100]} tick={{ fontSize: 10, fill: '#bbb' }} />
+              <Tooltip content={<Tip />} />
+              <Line type="monotone" dataKey="accuracy" name="Accuracy %" stroke="#157040" strokeWidth={2} dot={{ r: 3, fill: '#157040' }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="glade-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium" style={{ color: '#111' }}>Hours Saved Per Week</h3>
-            <span className="text-xs font-mono px-2 py-1 rounded-full" style={{ background: '#ede9fe', color: '#7c3aed' }}>vs. 4.5h manual baseline</span>
+        <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: '#111' }}>Hours Saved Per Week</span>
+            <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: '#ede9fe', color: '#7c3aed', fontFamily: 'DM Mono, monospace' }}>
+              vs. 4.5h manual baseline
+            </span>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={EVAL_METRICS} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0ee" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#aaa' }} />
-              <YAxis tick={{ fontSize: 10, fill: '#aaa' }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="timeSavedHours" fill="#157040" radius={[3, 3, 0, 0]} name="Hours Saved" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f3" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#bbb' }} />
+              <YAxis tick={{ fontSize: 10, fill: '#bbb' }} />
+              <Tooltip content={<Tip />} />
+              <Bar dataKey="timeSavedHours" name="Hours Saved" fill="#157040" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="glade-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium" style={{ color: '#111' }}>Auto-Fill vs Corrections</h3>
-            <span className="text-xs" style={{ color: '#888' }}>Fields auto-accepted vs manually corrected</span>
+      {/* Charts row 2 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: '#111' }}>Auto-Fill vs Corrections</span>
+            <span style={{ fontSize: 11, color: '#aaa' }}>Fields auto-accepted vs manually corrected</span>
           </div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={EVAL_METRICS} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0ee" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#aaa' }} />
-              <YAxis tick={{ fontSize: 10, fill: '#aaa' }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="fieldsAutoFilled" fill="#157040" radius={[2, 2, 0, 0]} name="Auto-Filled" stackId="a" />
-              <Bar dataKey="fieldsCorreected" fill="#fca5a5" radius={[2, 2, 0, 0]} name="Corrected" stackId="a" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f3" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#bbb' }} />
+              <YAxis tick={{ fontSize: 10, fill: '#bbb' }} />
+              <Tooltip content={<Tip />} />
+              <Bar dataKey="fieldsAutoFilled" name="Auto-accepted" fill="#157040" radius={[2, 2, 0, 0]} stackId="a" />
+              <Bar dataKey="fieldsCorreected" name="Corrected" fill="#fca5a5" radius={[2, 2, 0, 0]} stackId="a" />
             </BarChart>
           </ResponsiveContainer>
-          <div className="flex gap-4 mt-3 text-xs">
-            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm" style={{ background: '#157040' }} /><span style={{ color: '#555' }}>Auto-accepted</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-red-300" /><span style={{ color: '#555' }}>Manually corrected</span></div>
+          <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#555' }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: '#157040' }} />
+              Auto-accepted
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#555' }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: '#fca5a5' }} />
+              Manually corrected
+            </div>
           </div>
         </div>
 
-        <div className="glade-card p-5">
-          <h3 className="text-sm font-medium mb-4" style={{ color: '#111' }}>Business Impact Summary</h3>
-          <div className="space-y-3">
+        <div style={{ background: '#fff', border: '1px solid #e8e8e5', borderRadius: 12, padding: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: '#111', marginBottom: 16 }}>Business Impact Summary</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {[
-              { label: 'Paralegal hours saved (8 weeks)', value: `${totalTimeSaved} hours`, pct: 85, color: '#157040' },
-              { label: 'At $45/hr fully loaded cost', value: `$${(totalTimeSaved * 45).toLocaleString()} saved`, pct: 85, color: '#0369a1' },
-              { label: 'Annualized for this firm', value: `~$${Math.round(totalTimeSaved * 45 * 6.5 / 1000)}K/year`, pct: 90, color: '#7c3aed' },
-              { label: 'Scaled to 200 Glade firms', value: `~$${Math.round(totalTimeSaved * 45 * 6.5 * 200 / 1000000)}M/year`, pct: 95, color: '#b45309' },
-            ].map(({ label, value, pct, color }) => (
-              <div key={label}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span style={{ color: '#555' }}>{label}</span>
-                  <span className="font-mono font-medium" style={{ color }}>{value}</span>
+              { l: 'Paralegal hours saved (8 weeks)', v: `${totalHrs} hours`, pct: 85, c: '#157040' },
+              { l: 'At $45/hr fully loaded cost', v: `$${roi.toLocaleString()} saved`, pct: 85, c: '#0369a1' },
+              { l: 'Annualized for this firm', v: `~$${Math.round(roi * 6.5 / 1000)}K/year`, pct: 90, c: '#7c3aed' },
+              { l: 'Scaled to 200 Glade firms', v: `~$${Math.round(roi * 6.5 * 200 / 1000000)}M/year`, pct: 95, c: '#b45309' },
+            ].map(({ l, v, pct, c }) => (
+              <div key={l}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 12 }}>
+                  <span style={{ color: '#666' }}>{l}</span>
+                  <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 500, color: c }}>{v}</span>
                 </div>
-                <div className="h-1.5 rounded-full" style={{ background: '#f0f0ee' }}>
-                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+                <div style={{ height: 4, borderRadius: 2, background: '#f0f0ee' }}>
+                  <div style={{ height: '100%', borderRadius: 2, background: c, width: `${pct}%` }} />
                 </div>
               </div>
             ))}
           </div>
-          <div className="mt-4 p-3 rounded-xl" style={{ background: '#e6f5ed' }}>
-            <div className="text-xs font-medium mb-0.5" style={{ color: '#0f5530' }}>Total 8-week ROI</div>
-            <div className="text-2xl font-display font-medium" style={{ color: '#157040' }}>
-              ${(totalTimeSaved * 45).toLocaleString()}
+          <div style={{ marginTop: 16, padding: '14px 16px', borderRadius: 10, background: '#e6f5ed' }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: '#0f5530', marginBottom: 2 }}>Total 8-week ROI</div>
+            <div style={{ fontFamily: 'Fraunces, serif', fontSize: 26, fontWeight: 500, color: '#157040' }}>
+              ${roi.toLocaleString()}
             </div>
-            <div className="text-xs mt-0.5" style={{ color: '#34a85a' }}>across {totalCases} cases processed by AXIOM</div>
+            <div style={{ fontSize: 11, color: '#34a85a', marginTop: 2 }}>
+              across {totalCases} cases processed by PARALEX
+            </div>
           </div>
         </div>
       </div>

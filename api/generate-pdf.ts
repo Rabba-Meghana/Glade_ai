@@ -26,8 +26,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { width, height } = page.getSize()
 
       page.drawRectangle({ x: 0, y: height - 60, width, height: 60, color: green })
-      page.drawText('GLADE AI', { x: 30, y: height - 25, size: 14, font: boldFont, color: rgb(1, 1, 1) })
-      page.drawText('AXIOM Case Intelligence Platform', { x: 30, y: height - 42, size: 9, font, color: rgb(0.8, 1, 0.8) })
+      page.drawText('PARALEX', { x: 30, y: height - 25, size: 14, font: boldFont, color: rgb(1, 1, 1) })
+      page.drawText('PARALEX Case Intelligence Platform', { x: 30, y: height - 42, size: 9, font, color: rgb(0.8, 1, 0.8) })
       page.drawText(`Generated: ${new Date().toLocaleString()}`, { x: width - 200, y: height - 35, size: 8, font, color: rgb(0.8, 1, 0.8) })
 
       page.drawLine({ start: { x: 30, y: 40 }, end: { x: width - 30, y: 40 }, thickness: 0.5, color: gray })
@@ -103,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     y = drawRow(page2, 'Monthly Disposable Income', `$${(mt.disposableIncome || 220).toLocaleString()}`, y)
     y -= 20
 
-    y = drawSection(page2, 'AXIOM ANALYSIS METADATA', y)
+    y = drawSection(page2, 'PARALEX ANALYSIS METADATA', y)
     y = drawRow(page2, 'AI Confidence Score', `${Math.round((petition?.overallConfidence || 0.89) * 100)}%`, y)
     y = drawRow(page2, 'Fields Auto-Populated', `${petition?.fieldsAutoFilled || 18} fields`, y)
     y = drawRow(page2, 'Estimated Time Saved', `${Math.round((petition?.timeSavedMinutes || 220) / 60 * 10) / 10} hours vs manual`, y)
@@ -121,7 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const pdfBytes = await doc.save()
     res.setHeader('Content-Type', 'application/pdf')
-    res.setHeader('Content-Disposition', `attachment; filename="AXIOM_${caseData.caseNumber}_petition_draft.pdf"`)
+    res.setHeader('Content-Disposition', `attachment; filename="PARALEX_${caseData.caseNumber}_petition_draft.pdf"`)
     res.status(200).send(Buffer.from(pdfBytes))
   } catch (error: any) {
     res.status(500).json({ error: error.message })
