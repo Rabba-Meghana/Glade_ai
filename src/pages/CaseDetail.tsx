@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { MOCK_CASES } from '../lib/mockData'
 import { useTheme } from '../contexts/ThemeContext'
+import { useViewport } from '../hooks/useViewport'
 
 function daysUntil(d: string) { return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) }
 
@@ -19,6 +20,7 @@ export default function CaseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { c: t, theme } = useTheme()
+  const { isMobile } = useViewport()
   const cs = MOCK_CASES.find(x => x.id === id)
   if (!cs) return <div style={{ padding: 32, color: t.textSubtle, fontSize: 13 }}>Case not found.</div>
 
@@ -27,7 +29,7 @@ export default function CaseDetail() {
   const healthColor = cs.healthScore >= 75 ? t.success : cs.healthScore >= 50 ? t.warning : t.danger
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px 14px' : '24px 28px', maxWidth: 1100, margin: '0 auto' }}>
       <button onClick={() => navigate('/war-room')} style={{
         display: 'flex', alignItems: 'center', gap: 6,
         fontSize: 12.5, color: t.textMuted, background: 'none', border: 'none',
@@ -112,7 +114,7 @@ export default function CaseDetail() {
       </div>
 
       {/* Top metrics row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
         {[
           { icon: Activity, label: 'Health', value: cs.healthScore, color: healthColor, suffix: '/100' },
           { icon: Clock, label: 'Days to deadline', value: days, color: days <= 3 ? t.danger : days <= 10 ? t.warning : t.text, suffix: 'd' },
@@ -135,7 +137,7 @@ export default function CaseDetail() {
       </div>
 
       {/* Main: documents + sidebar */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.5fr 1fr', gap: 14 }}>
         {/* Documents */}
         <div style={{ background: t.bgElevated, border: `1px solid ${t.border}`, borderRadius: 14, padding: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { MOCK_CASES } from '../lib/mockData'
 import { useTheme } from '../contexts/ThemeContext'
+import { useViewport } from '../hooks/useViewport'
 
 type AgentKey = 'document' | 'compliance' | 'anomaly' | 'orchestrator'
 type AgentStatus = 'idle' | 'running' | 'complete' | 'error'
@@ -217,6 +218,7 @@ export default function AgentOrchestration() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { c, theme } = useTheme()
+  const { isMobile, isTablet } = useViewport()
   const caseData = MOCK_CASES.find(x => x.id === id)
 
   const [running, setRunning] = useState(false)
@@ -360,7 +362,7 @@ export default function AgentOrchestration() {
   if (!caseData) return <div style={{ padding: 32, color: c.textSubtle, fontSize: 13 }}>Case not found.</div>
 
   return (
-    <div style={{ padding: '24px 28px', minHeight: '100%' }}>
+    <div style={{ padding: isMobile ? '16px 14px' : '24px 28px', minHeight: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <button onClick={() => navigate(`/case/${id}`)} style={{
@@ -446,7 +448,7 @@ export default function AgentOrchestration() {
                       <div style={{ fontSize: 11.5, color: c.textMuted, marginTop: 2, maxWidth: 480 }}>{summary}</div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 24 }}>
+                  <div style={{ display: 'flex', gap: isMobile ? 14 : 24, flexWrap: 'wrap' }}>
                     {[
                       { label: 'TIME SAVED', value: `${(timeSaved / 60).toFixed(1)}h`, color: c.success },
                       { label: 'AUTO-FILLED', value: `${fieldsAutoFilled}`, color: c.info },
@@ -467,7 +469,7 @@ export default function AgentOrchestration() {
       </AnimatePresence>
 
       {/* 3 parallel agent panels */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr 1fr' : 'repeat(3, 1fr)', gap: 12, marginBottom: 12 }}>
         <AgentPanel agentKey="document" data={agents.document} isActive={activeAgent === 'document'} />
         <AgentPanel agentKey="compliance" data={agents.compliance} isActive={activeAgent === 'compliance'} />
         <AgentPanel agentKey="anomaly" data={agents.anomaly} isActive={activeAgent === 'anomaly'} />

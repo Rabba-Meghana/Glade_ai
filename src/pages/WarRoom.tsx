@@ -9,6 +9,7 @@ import {
 import { MOCK_CASES } from '../lib/mockData'
 import { Case } from '../types'
 import { useTheme } from '../contexts/ThemeContext'
+import { useViewport } from '../hooks/useViewport'
 
 const STATUS_PALETTE: Record<string, { label: string; color: string; dark: string }> = {
   intake:     { label: 'Intake',      color: '#06b6d4', dark: '#0e7490' },
@@ -23,7 +24,6 @@ function daysUntil(d: string) {
   return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000)
 }
 
-// Animated health ring
 function HealthRing({ value, size = 38 }: { value: number; size?: number }) {
   const { c } = useTheme()
   const r = (size - 6) / 2
@@ -32,7 +32,7 @@ function HealthRing({ value, size = 38 }: { value: number; size?: number }) {
   const color = value >= 75 ? c.success : value >= 50 ? c.warning : c.danger
 
   return (
-    <div style={{ position: 'relative', width: size, height: size }}>
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
         <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={c.border} strokeWidth={3} />
         <motion.circle
@@ -53,7 +53,6 @@ function HealthRing({ value, size = 38 }: { value: number; size?: number }) {
   )
 }
 
-// Sparkline
 function Sparkline({ data, color, width = 60, height = 22 }: { data: number[]; color: string; width?: number; height?: number }) {
   const max = Math.max(...data)
   const min = Math.min(...data)
@@ -73,7 +72,6 @@ function Sparkline({ data, color, width = 60, height = 22 }: { data: number[]; c
   )
 }
 
-// Deadline pressure bar
 function DeadlineBar({ days }: { days: number }) {
   const { c } = useTheme()
   const max = 30
@@ -109,7 +107,6 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-// Top stat card with animated number
 function StatCard({ label, value, change, icon: Icon, accent, spark }: any) {
   const { c, theme } = useTheme()
   return (
@@ -148,7 +145,6 @@ function StatCard({ label, value, change, icon: Icon, accent, spark }: any) {
   )
 }
 
-// Agent activity stream item
 function ActivityItem({ icon: Icon, color, text, time }: any) {
   const { c } = useTheme()
   return (
@@ -173,13 +169,12 @@ function ActivityItem({ icon: Icon, color, text, time }: any) {
   )
 }
 
-// Pipeline column for kanban
 function PipelineColumn({ status, cases, onCaseClick }: { status: string; cases: Case[]; onCaseClick: (id: string) => void }) {
   const { c, theme } = useTheme()
   const s = STATUS_PALETTE[status]
   return (
     <div style={{
-      flex: 1, minWidth: 200,
+      flex: 1, minWidth: 160,
       background: theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#fafafb',
       borderRadius: 12, padding: 10, border: `1px solid ${c.border}`,
     }}>
@@ -202,7 +197,7 @@ function PipelineColumn({ status, cases, onCaseClick }: { status: string; cases:
                 borderRadius: 9, padding: '10px 11px', cursor: 'pointer',
               }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: c.text }}>{cs.clientName}</div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 6 }}>{cs.clientName}</div>
                 <HealthRing value={cs.healthScore} size={26} />
               </div>
               <div style={{ fontSize: 10.5, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginBottom: 6 }}>
@@ -224,12 +219,61 @@ function PipelineColumn({ status, cases, onCaseClick }: { status: string; cases:
   )
 }
 
+// Mobile-friendly case card
+function CaseCard({ cs, onClick }: { cs: Case; onClick: () => void }) {
+  const { c, theme } = useTheme()
+  const days = daysUntil(cs.filingDeadline)
+  const trend = Array.from({ length: 8 }, (_, j) => cs.healthScore - 10 + (j * 2) + Math.sin(j) * 5)
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+      onClick={onClick}
+      style={{
+        background: c.bgElevated, border: `1px solid ${c.border}`,
+        borderRadius: 12, padding: '14px 16px', cursor: 'pointer',
+        marginBottom: 8,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+            {cs.urgency === 'critical' && (
+              <div style={{ position: 'relative', width: 6, height: 6, flexShrink: 0 }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: c.danger }} />
+                <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', background: c.danger, opacity: 0.3, animation: 'ping 2s infinite' }} />
+              </div>
+            )}
+            <span style={{ fontSize: 14, fontWeight: 600, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cs.clientName}</span>
+          </div>
+          <div style={{ fontSize: 11, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>
+            {cs.caseNumber} • Ch{cs.chapter} • {cs.state}
+          </div>
+        </div>
+        <HealthRing value={cs.healthScore} size={38} />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <StatusBadge status={cs.status} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Sparkline data={trend} color={cs.healthScore >= 70 ? c.success : cs.healthScore >= 50 ? c.warning : c.danger} />
+          <span style={{
+            fontSize: 12, fontWeight: 600,
+            color: days <= 3 ? c.danger : days <= 10 ? c.warning : c.textMuted,
+            fontFamily: 'Geist Mono, monospace',
+          }}>{days}d</span>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 export default function WarRoom() {
   const nav = useNavigate()
   const { c, theme } = useTheme()
+  const { isMobile, isTablet } = useViewport()
   const [view, setView] = useState<'table' | 'pipeline'>('table')
   const [filter, setFilter] = useState<'all' | 'critical' | 'today'>('all')
   const [activityIdx, setActivityIdx] = useState(0)
+  const [showActivity, setShowActivity] = useState(false)
 
   const cases = useMemo(() => {
     if (filter === 'critical') return MOCK_CASES.filter(c => c.urgency === 'critical')
@@ -244,7 +288,6 @@ export default function WarRoom() {
     upcoming: MOCK_CASES.filter(c => { const d = daysUntil(c.filingDeadline); return d > 0 && d <= 7 }).length,
   }), [])
 
-  // Synthetic activity feed
   const activities = [
     { icon: FileSearch, color: '#3b82f6', text: 'Document Agent extracted 14 fields from paystub_april_2026.pdf for Rosa Martinez', time: '2s ago' },
     { icon: Scale, color: '#a855f7', text: 'Compliance Agent flagged income $4,200/mo - below IL Ch7 threshold ($4,883)', time: '7s ago' },
@@ -267,10 +310,13 @@ export default function WarRoom() {
     return groups
   }, [cases])
 
+  const pad = isMobile ? '16px 14px' : '24px 28px'
+  const statCols = isMobile ? 'repeat(2, 1fr)' : isTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)'
+
   return (
-    <div style={{ padding: '24px 28px', minHeight: '100%' }}>
-      {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 20 }}>
+    <div style={{ padding: pad, minHeight: '100%' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 11, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
@@ -281,19 +327,21 @@ export default function WarRoom() {
               5 agents online
             </span>
           </div>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 600, color: c.text, letterSpacing: '-0.02em' }}>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 26, fontWeight: 600, color: c.text, letterSpacing: '-0.02em' }}>
             War Room
           </h1>
-          <div style={{ fontSize: 13, color: c.textMuted, marginTop: 3 }}>
-            Live case intelligence across {MOCK_CASES.length} active matters
-          </div>
+          {!isMobile && (
+            <div style={{ fontSize: 13, color: c.textMuted, marginTop: 3 }}>
+              Live case intelligence across {MOCK_CASES.length} active matters
+            </div>
+          )}
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ display: 'flex', background: c.surface, border: `1px solid ${c.border}`, borderRadius: 9, padding: 2 }}>
             {(['table', 'pipeline'] as const).map(v => (
               <button key={v} onClick={() => setView(v)} style={{
-                padding: '6px 14px', fontSize: 12, fontWeight: 500,
+                padding: '6px 12px', fontSize: 12, fontWeight: 500,
                 background: view === v ? c.bgElevated : 'transparent',
                 border: 'none', borderRadius: 7, cursor: 'pointer',
                 color: view === v ? c.text : c.textMuted,
@@ -302,253 +350,319 @@ export default function WarRoom() {
               }}>{v}</button>
             ))}
           </div>
-          <button style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '7px 14px', fontSize: 12, fontWeight: 600,
-            background: c.gradient, color: '#fff',
-            border: 'none', borderRadius: 9, cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(167, 139, 250, 0.3)',
-          }}>
-            <Plus size={13} /> New Case
-          </button>
+          {!isMobile && (
+            <button style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '7px 14px', fontSize: 12, fontWeight: 600,
+              background: c.gradient, color: '#fff',
+              border: 'none', borderRadius: 9, cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(167, 139, 250, 0.3)',
+            }}>
+              <Plus size={13} /> New Case
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: statCols, gap: isMobile ? 10 : 12, marginBottom: 16 }}>
         <StatCard label="Active cases" value={stats.active} change={6} icon={Activity} accent="#3b82f6" spark={[14, 15, 14, 16, 15, 17, 16, stats.active]} />
         <StatCard label="Critical urgency" value={stats.critical} change={-14} icon={AlertTriangle} accent="#f87171" spark={[4, 4, 5, 4, 3, 3, 2, stats.critical]} />
-        <StatCard label="Avg health score" value={`${stats.avgHealth}`} change={4} icon={TrendingUp} accent="#10b981" spark={[63, 65, 64, 66, 68, 67, 69, stats.avgHealth]} />
+        <StatCard label="Avg health" value={`${stats.avgHealth}`} change={4} icon={TrendingUp} accent="#10b981" spark={[63, 65, 64, 66, 68, 67, 69, stats.avgHealth]} />
         <StatCard label="Filing this week" value={stats.upcoming} change={9} icon={Clock} accent="#a78bfa" spark={[2, 3, 2, 3, 4, 3, 4, stats.upcoming]} />
       </div>
 
-      {/* Main grid: cases table + activity feed */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16 }}>
-        {/* Cases area */}
-        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
-          <div style={{
-            padding: '14px 18px', borderBottom: `1px solid ${c.border}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>All Cases</span>
-              <span style={{ fontSize: 11, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>
-                {cases.length} of {MOCK_CASES.length}
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {(['all', 'critical', 'today'] as const).map(f => (
-                <button key={f} onClick={() => setFilter(f)} style={{
-                  padding: '4px 10px', fontSize: 11, fontWeight: 500,
-                  background: filter === f ? c.accentSoft : 'transparent',
-                  color: filter === f ? c.accentText : c.textMuted,
-                  border: 'none', borderRadius: 6, cursor: 'pointer',
-                  textTransform: 'capitalize',
-                }}>{f}</button>
-              ))}
-            </div>
-          </div>
-
-          {view === 'table' ? (
-            <div>
-              <div style={{
-                display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 80px 70px 90px 50px',
-                padding: '10px 18px', borderBottom: `1px solid ${c.border}`,
-                fontSize: 10.5, fontWeight: 600, color: c.textSubtle,
-                fontFamily: 'Geist Mono, monospace', letterSpacing: '0.06em', textTransform: 'uppercase',
-              }}>
-                <div>Client</div>
-                <div>Status</div>
-                <div>Means Test</div>
-                <div>Health</div>
-                <div>Trend</div>
-                <div>Deadline</div>
-                <div></div>
+      {/* Main content area */}
+      {isMobile || isTablet ? (
+        // Mobile/Tablet: stacked layout
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Cases area */}
+          <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{
+              padding: '12px 14px', borderBottom: `1px solid ${c.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>All Cases</span>
+                <span style={{ fontSize: 11, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>
+                  {cases.length}
+                </span>
               </div>
-              <AnimatePresence>
-                {cases.map((cs, i) => {
-                  const days = daysUntil(cs.filingDeadline)
-                  // Synthetic per-case trend
-                  const trend = Array.from({ length: 8 }, (_, j) => cs.healthScore - 10 + (j * 2) + Math.sin(i + j) * 5)
-                  return (
-                    <motion.div key={cs.id}
-                      initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}
-                      onClick={() => nav(`/case/${cs.id}`)}
-                      whileHover={{ background: c.surfaceHover }}
-                      style={{
-                        display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 80px 70px 90px 50px',
-                        alignItems: 'center', padding: '12px 18px',
-                        borderBottom: `1px solid ${c.border}`, cursor: 'pointer',
-                      }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {cs.urgency === 'critical' && (
-                            <div style={{ position: 'relative', width: 6, height: 6 }}>
-                              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: c.danger }} />
-                              <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', background: c.danger, opacity: 0.3, animation: 'ping 2s infinite' }} />
-                            </div>
-                          )}
-                          <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{cs.clientName}</span>
-                        </div>
-                        <div style={{ fontSize: 10.5, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginTop: 2 }}>
-                          {cs.caseNumber} • Ch{cs.chapter} • {cs.state}
-                        </div>
-                      </div>
-                      <div><StatusBadge status={cs.status} /></div>
-                      <div>
-                        {cs.meansTestResult === 'pass' && <span style={{ fontSize: 11.5, color: c.success, fontWeight: 600 }}>● Pass</span>}
-                        {cs.meansTestResult === 'fail' && <span style={{ fontSize: 11.5, color: c.danger, fontWeight: 600 }}>● Fail</span>}
-                        {cs.meansTestResult === 'pending' && <span style={{ fontSize: 11.5, color: c.warning, fontWeight: 600 }}>● Pending</span>}
-                      </div>
-                      <div><HealthRing value={cs.healthScore} /></div>
-                      <div>
-                        <Sparkline data={trend} color={cs.healthScore >= 70 ? c.success : cs.healthScore >= 50 ? c.warning : c.danger} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: days <= 3 ? c.danger : days <= 10 ? c.warning : c.text, fontFamily: 'Geist Mono, monospace' }}>
-                          {days}d
-                        </div>
-                        <DeadlineBar days={days} />
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <button onClick={(e) => { e.stopPropagation(); nav(`/case/${cs.id}/agents`) }} style={{
-                          padding: '5px 8px', borderRadius: 6,
-                          background: c.accentSoft, color: c.accentText,
-                          border: 'none', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          fontSize: 10.5, fontWeight: 600,
-                        }}>
-                          <Sparkles size={10} /> Run
-                        </button>
-                      </div>
-                    </motion.div>
-                  )
-                })}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: 10, padding: 14, overflowX: 'auto' }}>
-              {Object.entries(statusGroups).map(([status, group]) => (
-                <PipelineColumn key={status} status={status} cases={group} onCaseClick={(id) => nav(`/case/${id}`)} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Right side: Agent activity feed */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Live agent constellation */}
-          <div style={{
-            background: c.bgElevated, border: `1px solid ${c.border}`,
-            borderRadius: 14, padding: 16, position: 'relative', overflow: 'hidden',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <Brain size={14} color={c.accent} />
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: c.text }}>Agent Mesh</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, color: c.success, fontFamily: 'Geist Mono, monospace' }}>
-                <div style={{ width: 5, height: 5, borderRadius: '50%', background: c.success, animation: 'pulse-dot 2s infinite' }} />
-                ACTIVE
-              </div>
-            </div>
-
-            {/* SVG agent constellation */}
-            <div style={{ position: 'relative', height: 140, marginBottom: 12 }}>
-              <svg width="100%" height="100%" viewBox="0 0 260 140" style={{ position: 'absolute', inset: 0 }}>
-                <defs>
-                  <linearGradient id="line-grad" x1="0" x2="1" y1="0" y2="0">
-                    <stop offset="0%" stopColor={c.accent} stopOpacity="0.6" />
-                    <stop offset="100%" stopColor={c.accent} stopOpacity="0.1" />
-                  </linearGradient>
-                </defs>
-                {/* Connection lines */}
-                <line x1="130" y1="70" x2="50" y2="35" stroke="url(#line-grad)" strokeWidth="1" />
-                <line x1="130" y1="70" x2="50" y2="105" stroke="url(#line-grad)" strokeWidth="1" />
-                <line x1="130" y1="70" x2="210" y2="35" stroke="url(#line-grad)" strokeWidth="1" />
-                <line x1="130" y1="70" x2="210" y2="105" stroke="url(#line-grad)" strokeWidth="1" />
-                {/* Pulse dots along lines */}
-                {[
-                  { from: [130, 70], to: [50, 35] }, { from: [130, 70], to: [50, 105] },
-                  { from: [130, 70], to: [210, 35] }, { from: [130, 70], to: [210, 105] },
-                ].map((p, i) => (
-                  <motion.circle key={i} r="2" fill={c.accent}
-                    initial={{ cx: p.from[0], cy: p.from[1] }}
-                    animate={{ cx: p.to[0], cy: p.to[1] }}
-                    transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 0.5, delay: i * 0.3 }} />
+              <div style={{ display: 'flex', gap: 4 }}>
+                {(['all', 'critical', 'today'] as const).map(f => (
+                  <button key={f} onClick={() => setFilter(f)} style={{
+                    padding: '4px 8px', fontSize: 11, fontWeight: 500,
+                    background: filter === f ? c.accentSoft : 'transparent',
+                    color: filter === f ? c.accentText : c.textMuted,
+                    border: 'none', borderRadius: 6, cursor: 'pointer',
+                    textTransform: 'capitalize',
+                  }}>{f}</button>
                 ))}
-              </svg>
-
-              {/* Agent nodes */}
-              {[
-                { x: 50, y: 35, label: 'Doc', color: '#3b82f6', icon: FileSearch },
-                { x: 50, y: 105, label: 'Compl.', color: '#a855f7', icon: Scale },
-                { x: 130, y: 70, label: 'Orch.', color: '#a78bfa', icon: Brain, big: true },
-                { x: 210, y: 35, label: 'Gen', color: '#10b981', icon: FilePen },
-                { x: 210, y: 105, label: 'Anom.', color: '#f97316', icon: AlertCircle },
-              ].map((n, i) => {
-                const Icon = n.icon
-                const s = n.big ? 36 : 26
-                return (
-                  <div key={i} style={{
-                    position: 'absolute',
-                    left: `${(n.x / 260) * 100}%`, top: `${(n.y / 140) * 100}%`,
-                    transform: 'translate(-50%, -50%)',
-                  }}>
-                    <motion.div
-                      animate={{ scale: [1, 1.08, 1] }}
-                      transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
-                      style={{
-                        width: s, height: s, borderRadius: '50%',
-                        background: `radial-gradient(circle, ${n.color}, ${n.color}aa)`,
-                        boxShadow: `0 0 16px ${n.color}66`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        border: `1.5px solid ${n.color}`,
-                      }}>
-                      <Icon size={n.big ? 16 : 12} color="#fff" />
-                    </motion.div>
-                    <div style={{
-                      position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
-                      marginTop: 4, fontSize: 9.5, color: c.textMuted, whiteSpace: 'nowrap',
-                      fontFamily: 'Geist Mono, monospace',
-                    }}>{n.label}</div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 11 }}>
-              <div style={{ padding: 8, borderRadius: 7, background: c.surface, border: `1px solid ${c.border}` }}>
-                <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginBottom: 2 }}>RUNS/HR</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>14</div>
-              </div>
-              <div style={{ padding: 8, borderRadius: 7, background: c.surface, border: `1px solid ${c.border}` }}>
-                <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginBottom: 2 }}>AVG LATENCY</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>3.4s</div>
               </div>
             </div>
+
+            {view === 'table' ? (
+              <div style={{ padding: '12px 14px' }}>
+                {cases.map(cs => (
+                  <CaseCard key={cs.id} cs={cs} onClick={() => nav(`/case/${cs.id}`)} />
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 10, padding: 12, overflowX: 'auto' }}>
+                {Object.entries(statusGroups).map(([status, group]) => (
+                  <PipelineColumn key={status} status={status} cases={group} onCaseClick={(id) => nav(`/case/${id}`)} />
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Activity feed */}
-          <div style={{
-            background: c.bgElevated, border: `1px solid ${c.border}`,
-            borderRadius: 14, padding: 16, flex: 1,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          {/* Collapsible activity feed on mobile */}
+          <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
+            <button
+              onClick={() => setShowActivity(v => !v)}
+              style={{
+                width: '100%', padding: '14px 16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'none', border: 'none', cursor: 'pointer',
+                borderBottom: showActivity ? `1px solid ${c.border}` : 'none',
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 <Activity size={14} color={c.info} />
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: c.text }}>Live Activity</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Live Activity</span>
               </div>
-              <span style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>STREAM</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: c.success, animation: 'pulse-dot 2s infinite' }} />
+                <span style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>
+                  {showActivity ? 'HIDE' : 'SHOW'}
+                </span>
+              </div>
+            </button>
+            {showActivity && (
+              <div style={{ padding: '0 16px' }}>
+                {activities.slice(0, 4).map((a, i) => (
+                  <ActivityItem key={i} {...a} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        // Desktop: side-by-side
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16 }}>
+          {/* Cases area */}
+          <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{
+              padding: '14px 18px', borderBottom: `1px solid ${c.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>All Cases</span>
+                <span style={{ fontSize: 11, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>
+                  {cases.length} of {MOCK_CASES.length}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {(['all', 'critical', 'today'] as const).map(f => (
+                  <button key={f} onClick={() => setFilter(f)} style={{
+                    padding: '4px 10px', fontSize: 11, fontWeight: 500,
+                    background: filter === f ? c.accentSoft : 'transparent',
+                    color: filter === f ? c.accentText : c.textMuted,
+                    border: 'none', borderRadius: 6, cursor: 'pointer',
+                    textTransform: 'capitalize',
+                  }}>{f}</button>
+                ))}
+              </div>
             </div>
-            <div>
-              {activities.map((a, i) => (
-                <ActivityItem key={i} {...a} />
-              ))}
+
+            {view === 'table' ? (
+              <div>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 80px 70px 90px 50px',
+                  padding: '10px 18px', borderBottom: `1px solid ${c.border}`,
+                  fontSize: 10.5, fontWeight: 600, color: c.textSubtle,
+                  fontFamily: 'Geist Mono, monospace', letterSpacing: '0.06em', textTransform: 'uppercase',
+                }}>
+                  <div>Client</div><div>Status</div><div>Means Test</div>
+                  <div>Health</div><div>Trend</div><div>Deadline</div><div></div>
+                </div>
+                <AnimatePresence>
+                  {cases.map((cs, i) => {
+                    const days = daysUntil(cs.filingDeadline)
+                    const trend = Array.from({ length: 8 }, (_, j) => cs.healthScore - 10 + (j * 2) + Math.sin(i + j) * 5)
+                    return (
+                      <motion.div key={cs.id}
+                        initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}
+                        onClick={() => nav(`/case/${cs.id}`)}
+                        whileHover={{ background: c.surfaceHover }}
+                        style={{
+                          display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 80px 70px 90px 50px',
+                          alignItems: 'center', padding: '12px 18px',
+                          borderBottom: `1px solid ${c.border}`, cursor: 'pointer',
+                        }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {cs.urgency === 'critical' && (
+                              <div style={{ position: 'relative', width: 6, height: 6 }}>
+                                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: c.danger }} />
+                                <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', background: c.danger, opacity: 0.3, animation: 'ping 2s infinite' }} />
+                              </div>
+                            )}
+                            <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{cs.clientName}</span>
+                          </div>
+                          <div style={{ fontSize: 10.5, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginTop: 2 }}>
+                            {cs.caseNumber} • Ch{cs.chapter} • {cs.state}
+                          </div>
+                        </div>
+                        <div><StatusBadge status={cs.status} /></div>
+                        <div>
+                          {cs.meansTestResult === 'pass' && <span style={{ fontSize: 11.5, color: c.success, fontWeight: 600 }}>Pass</span>}
+                          {cs.meansTestResult === 'fail' && <span style={{ fontSize: 11.5, color: c.danger, fontWeight: 600 }}>Fail</span>}
+                          {cs.meansTestResult === 'pending' && <span style={{ fontSize: 11.5, color: c.warning, fontWeight: 600 }}>Pending</span>}
+                        </div>
+                        <div><HealthRing value={cs.healthScore} /></div>
+                        <div>
+                          <Sparkline data={trend} color={cs.healthScore >= 70 ? c.success : cs.healthScore >= 50 ? c.warning : c.danger} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: days <= 3 ? c.danger : days <= 10 ? c.warning : c.text, fontFamily: 'Geist Mono, monospace' }}>
+                            {days}d
+                          </div>
+                          <DeadlineBar days={days} />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <button onClick={(e) => { e.stopPropagation(); nav(`/case/${cs.id}/agents`) }} style={{
+                            padding: '5px 8px', borderRadius: 6,
+                            background: c.accentSoft, color: c.accentText,
+                            border: 'none', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            fontSize: 10.5, fontWeight: 600,
+                          }}>
+                            <Sparkles size={10} /> Run
+                          </button>
+                        </div>
+                      </motion.div>
+                    )
+                  })}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 10, padding: 14, overflowX: 'auto' }}>
+                {Object.entries(statusGroups).map(([status, group]) => (
+                  <PipelineColumn key={status} status={status} cases={group} onCaseClick={(id) => nav(`/case/${id}`)} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right: agent mesh + activity */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{
+              background: c.bgElevated, border: `1px solid ${c.border}`,
+              borderRadius: 14, padding: 16, position: 'relative', overflow: 'hidden',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <Brain size={14} color={c.accent} />
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: c.text }}>Agent Mesh</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, color: c.success, fontFamily: 'Geist Mono, monospace' }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: c.success, animation: 'pulse-dot 2s infinite' }} />
+                  ACTIVE
+                </div>
+              </div>
+
+              <div style={{ position: 'relative', height: 140, marginBottom: 12 }}>
+                <svg width="100%" height="100%" viewBox="0 0 260 140" style={{ position: 'absolute', inset: 0 }}>
+                  <defs>
+                    <linearGradient id="line-grad" x1="0" x2="1" y1="0" y2="0">
+                      <stop offset="0%" stopColor={c.accent} stopOpacity="0.6" />
+                      <stop offset="100%" stopColor={c.accent} stopOpacity="0.1" />
+                    </linearGradient>
+                  </defs>
+                  <line x1="130" y1="70" x2="50" y2="35" stroke="url(#line-grad)" strokeWidth="1" />
+                  <line x1="130" y1="70" x2="50" y2="105" stroke="url(#line-grad)" strokeWidth="1" />
+                  <line x1="130" y1="70" x2="210" y2="35" stroke="url(#line-grad)" strokeWidth="1" />
+                  <line x1="130" y1="70" x2="210" y2="105" stroke="url(#line-grad)" strokeWidth="1" />
+                  {[
+                    { from: [130, 70], to: [50, 35] }, { from: [130, 70], to: [50, 105] },
+                    { from: [130, 70], to: [210, 35] }, { from: [130, 70], to: [210, 105] },
+                  ].map((p, i) => (
+                    <motion.circle key={i} r="2" fill={c.accent}
+                      initial={{ cx: p.from[0], cy: p.from[1] }}
+                      animate={{ cx: p.to[0], cy: p.to[1] }}
+                      transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 0.5, delay: i * 0.3 }} />
+                  ))}
+                </svg>
+                {[
+                  { x: 50, y: 35, label: 'Doc', color: '#3b82f6', icon: FileSearch },
+                  { x: 50, y: 105, label: 'Compl.', color: '#a855f7', icon: Scale },
+                  { x: 130, y: 70, label: 'Orch.', color: '#a78bfa', icon: Brain, big: true },
+                  { x: 210, y: 35, label: 'Gen', color: '#10b981', icon: FilePen },
+                  { x: 210, y: 105, label: 'Anom.', color: '#f97316', icon: AlertCircle },
+                ].map((n, i) => {
+                  const Icon = n.icon
+                  const s = n.big ? 36 : 26
+                  return (
+                    <div key={i} style={{
+                      position: 'absolute',
+                      left: `${(n.x / 260) * 100}%`, top: `${(n.y / 140) * 100}%`,
+                      transform: 'translate(-50%, -50%)',
+                    }}>
+                      <motion.div
+                        animate={{ scale: [1, 1.08, 1] }}
+                        transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
+                        style={{
+                          width: s, height: s, borderRadius: '50%',
+                          background: `radial-gradient(circle, ${n.color}, ${n.color}aa)`,
+                          boxShadow: `0 0 16px ${n.color}66`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          border: `1.5px solid ${n.color}`,
+                        }}>
+                        <Icon size={n.big ? 16 : 12} color="#fff" />
+                      </motion.div>
+                      <div style={{
+                        position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+                        marginTop: 4, fontSize: 9.5, color: c.textMuted, whiteSpace: 'nowrap',
+                        fontFamily: 'Geist Mono, monospace',
+                      }}>{n.label}</div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div style={{ padding: 8, borderRadius: 7, background: c.surface, border: `1px solid ${c.border}` }}>
+                  <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginBottom: 2 }}>RUNS/HR</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>14</div>
+                </div>
+                <div style={{ padding: 8, borderRadius: 7, background: c.surface, border: `1px solid ${c.border}` }}>
+                  <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginBottom: 2 }}>AVG LATENCY</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>3.4s</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: c.bgElevated, border: `1px solid ${c.border}`,
+              borderRadius: 14, padding: 16, flex: 1,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <Activity size={14} color={c.info} />
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: c.text }}>Live Activity</span>
+                </div>
+                <span style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>STREAM</span>
+              </div>
+              <div>
+                {activities.map((a, i) => (
+                  <ActivityItem key={i} {...a} />
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

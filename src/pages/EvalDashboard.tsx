@@ -6,29 +6,22 @@ import {
 } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart,
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend, BarChart, Bar
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, BarChart, Bar
 } from 'recharts'
 import { useTheme } from '../contexts/ThemeContext'
+import { useViewport } from '../hooks/useViewport'
 
-const WEEKS = ['W-7', 'W-6', 'W-5', 'W-4', 'W-3', 'W-2', 'W-1', 'Now']
-
-// Realistic accuracy curves:
-// Document: structured extraction, converges fast (paystubs/bank stmts have known formats)
-// Compliance: rule-based reasoning, high ceiling, slow gains from prompt tuning
-// Generation: long-form output, volatile, drift-prone
-// Anomaly: open-ended, hardest, lowest ceiling, occasional regressions
 const TREND = [
   { week: 'W-7', Document: 82.4, Compliance: 79.1, Generation: 73.6, Anomaly: 68.2 },
   { week: 'W-6', Document: 86.1, Compliance: 81.8, Generation: 76.9, Anomaly: 70.4 },
   { week: 'W-5', Document: 88.7, Compliance: 84.2, Generation: 78.1, Anomaly: 71.8 },
-  { week: 'W-4', Document: 90.2, Compliance: 85.6, Generation: 80.4, Anomaly: 70.1 }, // anomaly regression
+  { week: 'W-4', Document: 90.2, Compliance: 85.6, Generation: 80.4, Anomaly: 70.1 },
   { week: 'W-3', Document: 91.4, Compliance: 87.3, Generation: 79.8, Anomaly: 73.6 },
   { week: 'W-2', Document: 92.1, Compliance: 88.1, Generation: 82.5, Anomaly: 75.9 },
   { week: 'W-1', Document: 92.8, Compliance: 88.9, Generation: 83.2, Anomaly: 77.4 },
   { week: 'Now', Document: 93.4, Compliance: 89.6, Generation: 84.7, Anomaly: 78.1 },
 ]
 
-// Hours-saved curve: manual baseline holds steady, PARALEX execution drops as agents mature
 const ROI_DATA = [
   { week: 'W-7', manual: 6.1, paralex: 1.4 },
   { week: 'W-6', manual: 6.1, paralex: 1.3 },
@@ -40,21 +33,15 @@ const ROI_DATA = [
   { week: 'Now', manual: 6.1, paralex: 0.8 },
 ]
 
-// Realistic field-level distribution: structured numerics > calculated > judgment fields
 const FIELDS = [
-  { name: 'Income',     accepted: 96, corrected: 4 },  // direct from paystub, near-perfect OCR
-  { name: 'Assets',     accepted: 89, corrected: 11 }, // bank statement extraction
-  { name: 'Debts',      accepted: 91, corrected: 9 },  // credit report, structured
-  { name: 'Expenses',   accepted: 76, corrected: 24 }, // judgment-heavy, IRS allowable
-  { name: 'Exemptions', accepted: 68, corrected: 32 }, // hardest: state-specific, strategic
-  { name: 'Schedule J', accepted: 83, corrected: 17 }, // composite of above
+  { name: 'Income',     accepted: 96, corrected: 4 },
+  { name: 'Assets',     accepted: 89, corrected: 11 },
+  { name: 'Debts',      accepted: 91, corrected: 9 },
+  { name: 'Expenses',   accepted: 76, corrected: 24 },
+  { name: 'Exemptions', accepted: 68, corrected: 32 },
+  { name: 'Schedule J', accepted: 83, corrected: 17 },
 ]
 
-// Distinct radar signatures, each agent has a real character:
-// Doc: fast + accurate, narrow scope
-// Comp: very accurate + confident, slow, narrow
-// Gen: high coverage, medium accuracy, weak auto-accept (paralegals review)
-// Anom: high coverage, low confidence (open-ended), high speed
 const RADAR = [
   { metric: 'Accuracy',    Doc: 93, Comp: 90, Gen: 85, Anom: 78 },
   { metric: 'Speed',       Doc: 95, Comp: 71, Gen: 64, Anom: 88 },
@@ -74,7 +61,7 @@ function MetricCard({ label, value, sub, icon: Icon, change, accent }: any) {
         background: `radial-gradient(circle, ${accent}22, transparent 70%)`, borderRadius: '50%' }} />
       <div style={{
         width: 34, height: 34, borderRadius: 9,
-        background: theme === 'dark' ? `${accent}1f` : `${accent}1f`,
+        background: `${accent}1f`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         border: `1px solid ${accent}33`, marginBottom: 14,
       }}>
@@ -101,7 +88,6 @@ function MetricCard({ label, value, sub, icon: Icon, change, accent }: any) {
   )
 }
 
-// Heatmap cell
 function HeatCell({ value, max }: { value: number; max: number }) {
   const { c, theme } = useTheme()
   const intensity = value / max
@@ -110,10 +96,10 @@ function HeatCell({ value, max }: { value: number; max: number }) {
     : `rgba(95, 79, 134, ${0.08 + intensity * 0.4})`
   return (
     <div style={{
-      flex: 1, height: 32, borderRadius: 5,
+      flex: 1, height: 30, borderRadius: 5,
       background: bg,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 10, fontWeight: 600, color: intensity > 0.5 ? '#fff' : c.text,
+      fontSize: 9.5, fontWeight: 600, color: intensity > 0.5 ? '#fff' : c.text,
       fontFamily: 'Geist Mono, monospace',
       border: `1px solid ${c.border}`,
     }}>
@@ -124,16 +110,11 @@ function HeatCell({ value, max }: { value: number; max: number }) {
 
 export default function EvalDashboard() {
   const { c, theme } = useTheme()
+  const { isMobile, isTablet } = useViewport()
   const [range, setRange] = useState<'7d' | '30d' | '90d'>('30d')
 
-  // Realistic agent run distribution. Pattern observed in actual bankruptcy firm workflow:
-  // - Doc Agent peaks Mon/Tue (intake days when clients drop off paperwork)
-  // - Comp Agent peaks Wed/Thu (means tests run after docs collected)
-  // - Gen Agent peaks Thu/Fri (petitions assembled before weekly filing window)
-  // - Anom Agent runs continuously, slight Tue/Wed bump
-  // - All agents drop sharply on weekends (paralegals not in office)
   const heatmap = useMemo(() => ({
-    days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    days: isMobile ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     rows: [
       { agent: 'Doc',  values: [187, 204, 142,  98,  76,  18,  11] },
       { agent: 'Comp', values: [ 64,  92, 158, 184, 121,  14,   8] },
@@ -141,30 +122,34 @@ export default function EvalDashboard() {
       { agent: 'Anom', values: [ 96, 124, 138, 118, 102,  31,  18] },
     ],
     max: 204,
-  }), [])
+  }), [isMobile])
+
+  const pad = isMobile ? '16px 14px' : '24px 28px'
+  const metricCols = isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)'
+  const chartH = isMobile ? 180 : 240
 
   return (
-    <div style={{ padding: '24px 28px', minHeight: '100%' }}>
+    <div style={{ padding: pad, minHeight: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 22 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 11, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Evaluation
-            </span>
+          <div style={{ fontSize: 11, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+            Evaluation
           </div>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 600, color: c.text, letterSpacing: '-0.02em' }}>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 600, color: c.text, letterSpacing: '-0.02em' }}>
             Eval Command Center
           </h1>
-          <div style={{ fontSize: 13, color: c.textMuted, marginTop: 3 }}>
-            Agent accuracy, time saved, and trust signals across all production runs
-          </div>
+          {!isMobile && (
+            <div style={{ fontSize: 13, color: c.textMuted, marginTop: 3 }}>
+              Agent accuracy, time saved, and trust signals across all production runs
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', background: c.surface, border: `1px solid ${c.border}`, borderRadius: 9, padding: 2 }}>
           {(['7d', '30d', '90d'] as const).map(r => (
             <button key={r} onClick={() => setRange(r)} style={{
-              padding: '6px 14px', fontSize: 12, fontWeight: 500,
+              padding: '6px 12px', fontSize: 12, fontWeight: 500,
               background: range === r ? c.bgElevated : 'transparent',
               border: 'none', borderRadius: 7, cursor: 'pointer',
               color: range === r ? c.text : c.textMuted,
@@ -175,8 +160,8 @@ export default function EvalDashboard() {
         </div>
       </div>
 
-      {/* Top metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+      {/* Metrics */}
+      <div style={{ display: 'grid', gridTemplateColumns: metricCols, gap: isMobile ? 10 : 12, marginBottom: 14 }}>
         <MetricCard label="Weighted accuracy" value="88.4%" sub="1,247 runs, 18 cases" icon={Target} change={3} accent="#10b981" />
         <MetricCard label="Time saved / case" value="5.3 hrs" sub="6.1h manual, 0.8h paralex" icon={Clock} change={14} accent="#3b82f6" />
         <MetricCard label="Auto-accept rate" value="78%" sub="weighted across fields" icon={Zap} change={5} accent="#a78bfa" />
@@ -184,24 +169,23 @@ export default function EvalDashboard() {
       </div>
 
       {/* Charts row 1: trend + radar */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 16 }}>
-        {/* Accuracy trend */}
-        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr' : '1.4fr 1fr', gap: 14, marginBottom: 14 }}>
+        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: isMobile ? 14 : 20 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
             <div>
               <div style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Agent Accuracy Over Time</div>
               <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>Per-agent accuracy %, weekly aggregation</div>
             </div>
-            <div style={{ display: 'flex', gap: 12, fontSize: 10.5 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 8 : 12, fontSize: 10.5 }}>
               {[{ name: 'Document', color: '#3b82f6' }, { name: 'Compliance', color: '#a855f7' }, { name: 'Generation', color: '#10b981' }, { name: 'Anomaly', color: '#f97316' }].map(s => (
                 <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 5, color: c.textMuted }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.color }} />
-                  {s.name}
+                  {isMobile ? s.name.slice(0, 4) : s.name}
                 </div>
               ))}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={chartH}>
             <LineChart data={TREND} margin={{ top: 4, right: 4, bottom: 4, left: -8 }}>
               <CartesianGrid stroke={c.border} strokeDasharray="3 3" />
               <XAxis dataKey="week" stroke={c.textSubtle} tick={{ fontSize: 10, fontFamily: 'Geist Mono, monospace' }} />
@@ -215,16 +199,15 @@ export default function EvalDashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Agent capability radar */}
-        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20 }}>
+        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: isMobile ? 14 : 20 }}>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Agent Capability Profile</div>
             <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>Normalized scores across 5 dimensions</div>
           </div>
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={chartH}>
             <RadarChart data={RADAR}>
               <PolarGrid stroke={c.border} />
-              <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10, fill: c.textMuted, fontFamily: 'Geist Mono, monospace' }} />
+              <PolarAngleAxis dataKey="metric" tick={{ fontSize: isMobile ? 9 : 10, fill: c.textMuted, fontFamily: 'Geist Mono, monospace' }} />
               <PolarRadiusAxis tick={{ fontSize: 9, fill: c.textSubtle }} stroke={c.border} />
               <Radar name="Doc" dataKey="Doc" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} strokeWidth={1.5} />
               <Radar name="Comp" dataKey="Comp" stroke="#a855f7" fill="#a855f7" fillOpacity={0.2} strokeWidth={1.5} />
@@ -235,15 +218,14 @@ export default function EvalDashboard() {
         </div>
       </div>
 
-      {/* Row 2: ROI area + heatmap */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-        {/* ROI hours saved */}
-        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20 }}>
+      {/* Row 2: ROI + heatmap */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: isMobile ? 14 : 20 }}>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Per-Case Time: Manual vs PARALEX</div>
             <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>Hours per case, 8-week rolling window</div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={isMobile ? 160 : 220}>
             <AreaChart data={ROI_DATA} margin={{ top: 4, right: 4, bottom: 4, left: -8 }}>
               <defs>
                 <linearGradient id="grad-manual" x1="0" x2="0" y1="0" y2="1">
@@ -263,49 +245,39 @@ export default function EvalDashboard() {
               <Area type="monotone" dataKey="paralex" stroke="#10b981" strokeWidth={2} fill="url(#grad-paralex)" name="PARALEX" />
             </AreaChart>
           </ResponsiveContainer>
-          <div style={{ display: 'flex', gap: 14, marginTop: 8, marginBottom: 4, fontSize: 11, color: c.textMuted, paddingLeft: 4 }}>
+          <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 11, color: c.textMuted, paddingLeft: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <div style={{ width: 10, height: 2, background: '#f87171' }} /> Manual baseline
+              <div style={{ width: 10, height: 2, background: '#f87171' }} /> Manual
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <div style={{ width: 10, height: 2, background: '#10b981' }} /> PARALEX execution
+              <div style={{ width: 10, height: 2, background: '#10b981' }} /> PARALEX
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 8, padding: 10, background: c.surface, borderRadius: 9 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>MANUAL</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>6.1h</div>
-            </div>
-            <div style={{ width: 1, background: c.border }} />
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>PARALEX</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>0.8h</div>
-            </div>
-            <div style={{ width: 1, background: c.border }} />
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>REDUCTION</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: c.success }}>87%</div>
-            </div>
+            {[['MANUAL', '6.1h', c.text], ['PARALEX', '0.8h', c.text], ['REDUCTION', '87%', c.success]].map(([label, val, color]) => (
+              <div key={label as string} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>{label}</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: color as string }}>{val}</div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Accuracy heatmap by day */}
-        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20 }}>
+        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: isMobile ? 14 : 20 }}>
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Run Volume Heatmap</div>
             <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>Agent runs per day of week, last 30 days</div>
           </div>
-          {/* Heatmap grid */}
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(7, 1fr)', gap: 3, marginBottom: 4 }}>
               <div />
               {heatmap.days.map(d => (
-                <div key={d} style={{ fontSize: 9.5, color: c.textSubtle, textAlign: 'center', fontFamily: 'Geist Mono, monospace' }}>{d}</div>
+                <div key={d} style={{ fontSize: 9, color: c.textSubtle, textAlign: 'center', fontFamily: 'Geist Mono, monospace' }}>{d}</div>
               ))}
             </div>
             {heatmap.rows.map(row => (
-              <div key={row.agent} style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
-                <div style={{ fontSize: 11, color: c.textMuted, display: 'flex', alignItems: 'center', fontFamily: 'Geist Mono, monospace' }}>{row.agent}</div>
+              <div key={row.agent} style={{ display: 'grid', gridTemplateColumns: '40px repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
+                <div style={{ fontSize: 10.5, color: c.textMuted, display: 'flex', alignItems: 'center', fontFamily: 'Geist Mono, monospace' }}>{row.agent}</div>
                 {row.values.map((v, i) => <HeatCell key={i} value={v} max={heatmap.max} />)}
               </div>
             ))}
@@ -318,18 +290,17 @@ export default function EvalDashboard() {
         </div>
       </div>
 
-      {/* Row 3: field-level trust + ROI calc */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
-        {/* Field-level trust */}
-        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20 }}>
+      {/* Row 3: field trust + impact */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr' : '1.4fr 1fr', gap: 14 }}>
+        <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: isMobile ? 14 : 20 }}>
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Field-Level Trust Score</div>
             <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>What paralegals accept vs correct, last 1,000 runs</div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={isMobile ? 160 : 220}>
             <BarChart data={FIELDS} margin={{ top: 4, right: 4, bottom: 4, left: -8 }}>
               <CartesianGrid stroke={c.border} strokeDasharray="3 3" />
-              <XAxis dataKey="name" stroke={c.textSubtle} tick={{ fontSize: 10, fontFamily: 'Geist Mono, monospace' }} />
+              <XAxis dataKey="name" stroke={c.textSubtle} tick={{ fontSize: isMobile ? 9 : 10, fontFamily: 'Geist Mono, monospace' }} />
               <YAxis stroke={c.textSubtle} tick={{ fontSize: 10, fontFamily: 'Geist Mono, monospace' }} />
               <Tooltip contentStyle={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 8, fontSize: 11 }} />
               <Bar dataKey="accepted" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
@@ -346,9 +317,8 @@ export default function EvalDashboard() {
           </div>
         </div>
 
-        {/* Impact calculator */}
         <div style={{ background: c.gradient, borderRadius: 14, padding: 1 }}>
-          <div style={{ background: c.bgElevated, borderRadius: 13, padding: 20 }}>
+          <div style={{ background: c.bgElevated, borderRadius: 13, padding: isMobile ? 14 : 20 }}>
             <div style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
                 <Award size={14} color={c.accent} />
@@ -386,7 +356,7 @@ export default function EvalDashboard() {
             }}>
               <div style={{ fontSize: 10.5, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginBottom: 5, letterSpacing: '0.06em' }}>MODEL ASSUMPTIONS</div>
               <div style={{ fontSize: 11.5, color: c.textMuted, lineHeight: 1.6 }}>
-                5.3h saved per case × $28/hr fully-loaded paralegal cost × 12 months. Excludes filing-error cost avoidance and capacity expansion upside.
+                5.3h saved per case x $28/hr fully-loaded paralegal cost x 12 months. Excludes filing-error cost avoidance and capacity expansion upside.
               </div>
             </div>
           </div>
