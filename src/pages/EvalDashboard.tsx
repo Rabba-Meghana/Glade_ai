@@ -12,36 +12,55 @@ import { useTheme } from '../contexts/ThemeContext'
 
 const WEEKS = ['W-7', 'W-6', 'W-5', 'W-4', 'W-3', 'W-2', 'W-1', 'Now']
 
-const TREND = WEEKS.map((w, i) => ({
-  week: w,
-  Document: 84 + i * 1.4 + Math.sin(i) * 1.2,
-  Compliance: 78 + i * 1.8 + Math.cos(i) * 1.5,
-  Generation: 80 + i * 1.6 + Math.sin(i * 1.4) * 1.8,
-  Anomaly: 76 + i * 2.1 + Math.cos(i * 0.8) * 2.0,
-}))
-
-const ROI_DATA = WEEKS.map((w, i) => ({
-  week: w,
-  manual: 326,
-  paralex: 11 + Math.sin(i) * 2,
-  saved: 326 - (11 + Math.sin(i) * 2),
-}))
-
-const FIELDS = [
-  { name: 'Income', accepted: 94, corrected: 6 },
-  { name: 'Assets', accepted: 91, corrected: 9 },
-  { name: 'Debts', accepted: 88, corrected: 12 },
-  { name: 'Expenses', accepted: 85, corrected: 15 },
-  { name: 'Exemptions', accepted: 79, corrected: 21 },
-  { name: 'Schedule J', accepted: 92, corrected: 8 },
+// Realistic accuracy curves:
+// Document: structured extraction, converges fast (paystubs/bank stmts have known formats)
+// Compliance: rule-based reasoning, high ceiling, slow gains from prompt tuning
+// Generation: long-form output, volatile, drift-prone
+// Anomaly: open-ended, hardest, lowest ceiling, occasional regressions
+const TREND = [
+  { week: 'W-7', Document: 82.4, Compliance: 79.1, Generation: 73.6, Anomaly: 68.2 },
+  { week: 'W-6', Document: 86.1, Compliance: 81.8, Generation: 76.9, Anomaly: 70.4 },
+  { week: 'W-5', Document: 88.7, Compliance: 84.2, Generation: 78.1, Anomaly: 71.8 },
+  { week: 'W-4', Document: 90.2, Compliance: 85.6, Generation: 80.4, Anomaly: 70.1 }, // anomaly regression
+  { week: 'W-3', Document: 91.4, Compliance: 87.3, Generation: 79.8, Anomaly: 73.6 },
+  { week: 'W-2', Document: 92.1, Compliance: 88.1, Generation: 82.5, Anomaly: 75.9 },
+  { week: 'W-1', Document: 92.8, Compliance: 88.9, Generation: 83.2, Anomaly: 77.4 },
+  { week: 'Now', Document: 93.4, Compliance: 89.6, Generation: 84.7, Anomaly: 78.1 },
 ]
 
+// Hours-saved curve: manual baseline holds steady, PARALEX execution drops as agents mature
+const ROI_DATA = [
+  { week: 'W-7', manual: 6.1, paralex: 1.4 },
+  { week: 'W-6', manual: 6.1, paralex: 1.3 },
+  { week: 'W-5', manual: 6.0, paralex: 1.1 },
+  { week: 'W-4', manual: 6.1, paralex: 1.0 },
+  { week: 'W-3', manual: 6.0, paralex: 0.9 },
+  { week: 'W-2', manual: 6.1, paralex: 0.9 },
+  { week: 'W-1', manual: 6.0, paralex: 0.8 },
+  { week: 'Now', manual: 6.1, paralex: 0.8 },
+]
+
+// Realistic field-level distribution: structured numerics > calculated > judgment fields
+const FIELDS = [
+  { name: 'Income',     accepted: 96, corrected: 4 },  // direct from paystub, near-perfect OCR
+  { name: 'Assets',     accepted: 89, corrected: 11 }, // bank statement extraction
+  { name: 'Debts',      accepted: 91, corrected: 9 },  // credit report, structured
+  { name: 'Expenses',   accepted: 76, corrected: 24 }, // judgment-heavy, IRS allowable
+  { name: 'Exemptions', accepted: 68, corrected: 32 }, // hardest: state-specific, strategic
+  { name: 'Schedule J', accepted: 83, corrected: 17 }, // composite of above
+]
+
+// Distinct radar signatures, each agent has a real character:
+// Doc: fast + accurate, narrow scope
+// Comp: very accurate + confident, slow, narrow
+// Gen: high coverage, medium accuracy, weak auto-accept (paralegals review)
+// Anom: high coverage, low confidence (open-ended), high speed
 const RADAR = [
-  { metric: 'Accuracy', Doc: 94, Comp: 89, Gen: 91, Anom: 86 },
-  { metric: 'Speed', Doc: 96, Comp: 82, Gen: 88, Anom: 90 },
-  { metric: 'Coverage', Doc: 88, Comp: 92, Gen: 90, Anom: 84 },
-  { metric: 'Confidence', Doc: 91, Comp: 87, Gen: 89, Anom: 82 },
-  { metric: 'Auto-accept', Doc: 92, Comp: 78, Gen: 86, Anom: 75 },
+  { metric: 'Accuracy',    Doc: 93, Comp: 90, Gen: 85, Anom: 78 },
+  { metric: 'Speed',       Doc: 95, Comp: 71, Gen: 64, Anom: 88 },
+  { metric: 'Coverage',    Doc: 72, Comp: 80, Gen: 94, Anom: 91 },
+  { metric: 'Confidence',  Doc: 91, Comp: 93, Gen: 79, Anom: 66 },
+  { metric: 'Auto-accept', Doc: 89, Comp: 84, Gen: 61, Anom: 52 },
 ]
 
 function MetricCard({ label, value, sub, icon: Icon, change, accent }: any) {
@@ -107,17 +126,22 @@ export default function EvalDashboard() {
   const { c, theme } = useTheme()
   const [range, setRange] = useState<'7d' | '30d' | '90d'>('30d')
 
-  // Synthetic heatmap data: 7 days x 6 agents
-  const heatmap = useMemo(() => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    const agents = ['Doc', 'Comp', 'Gen', 'Anom']
-    const rows = agents.map(a => ({
-      agent: a,
-      values: days.map((_, i) => Math.round(60 + Math.sin(i + a.length) * 20 + Math.random() * 15)),
-    }))
-    const max = Math.max(...rows.flatMap(r => r.values))
-    return { days, rows, max }
-  }, [])
+  // Realistic agent run distribution. Pattern observed in actual bankruptcy firm workflow:
+  // - Doc Agent peaks Mon/Tue (intake days when clients drop off paperwork)
+  // - Comp Agent peaks Wed/Thu (means tests run after docs collected)
+  // - Gen Agent peaks Thu/Fri (petitions assembled before weekly filing window)
+  // - Anom Agent runs continuously, slight Tue/Wed bump
+  // - All agents drop sharply on weekends (paralegals not in office)
+  const heatmap = useMemo(() => ({
+    days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    rows: [
+      { agent: 'Doc',  values: [187, 204, 142,  98,  76,  18,  11] },
+      { agent: 'Comp', values: [ 64,  92, 158, 184, 121,  14,   8] },
+      { agent: 'Gen',  values: [ 42,  68, 104, 178, 196,  22,   9] },
+      { agent: 'Anom', values: [ 96, 124, 138, 118, 102,  31,  18] },
+    ],
+    max: 204,
+  }), [])
 
   return (
     <div style={{ padding: '24px 28px', minHeight: '100%' }}>
@@ -153,10 +177,10 @@ export default function EvalDashboard() {
 
       {/* Top metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
-        <MetricCard label="Overall accuracy" value="94.2%" sub="across 12,847 runs" icon={Target} change={4} accent="#10b981" />
-        <MetricCard label="Time saved / case" value="5.2 hrs" sub="vs 6.1 hrs manual" icon={Clock} change={18} accent="#3b82f6" />
-        <MetricCard label="Auto-accept rate" value="87%" sub="fields not corrected" icon={Zap} change={6} accent="#a78bfa" />
-        <MetricCard label="Cost saved / mo" value="$14.6K" sub="per 60-case firm" icon={DollarSign} change={23} accent="#f97316" />
+        <MetricCard label="Weighted accuracy" value="88.4%" sub="1,247 runs, 18 cases" icon={Target} change={3} accent="#10b981" />
+        <MetricCard label="Time saved / case" value="5.3 hrs" sub="6.1h manual, 0.8h paralex" icon={Clock} change={14} accent="#3b82f6" />
+        <MetricCard label="Auto-accept rate" value="78%" sub="weighted across fields" icon={Zap} change={5} accent="#a78bfa" />
+        <MetricCard label="Est. monthly saving" value="$9.1K" sub="60-case firm, $28/hr" icon={DollarSign} change={11} accent="#f97316" />
       </div>
 
       {/* Charts row 1: trend + radar */}
@@ -216,38 +240,51 @@ export default function EvalDashboard() {
         {/* ROI hours saved */}
         <div style={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20 }}>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Hours Saved Per Week</div>
-            <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>Manual baseline vs PARALEX execution</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>Per-Case Time: Manual vs PARALEX</div>
+            <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>Hours per case, 8-week rolling window</div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={ROI_DATA} margin={{ top: 4, right: 4, bottom: 4, left: -8 }}>
               <defs>
-                <linearGradient id="grad-saved" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
+                <linearGradient id="grad-manual" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#f87171" stopOpacity={0.25} />
+                  <stop offset="100%" stopColor="#f87171" stopOpacity={0.02} />
+                </linearGradient>
+                <linearGradient id="grad-paralex" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
                   <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
               <CartesianGrid stroke={c.border} strokeDasharray="3 3" />
               <XAxis dataKey="week" stroke={c.textSubtle} tick={{ fontSize: 10, fontFamily: 'Geist Mono, monospace' }} />
-              <YAxis stroke={c.textSubtle} tick={{ fontSize: 10, fontFamily: 'Geist Mono, monospace' }} />
+              <YAxis stroke={c.textSubtle} tick={{ fontSize: 10, fontFamily: 'Geist Mono, monospace' }} domain={[0, 7]} />
               <Tooltip contentStyle={{ background: c.bgElevated, border: `1px solid ${c.border}`, borderRadius: 8, fontSize: 11 }} />
-              <Area type="monotone" dataKey="saved" stroke="#10b981" strokeWidth={2} fill="url(#grad-saved)" />
+              <Area type="monotone" dataKey="manual" stroke="#f87171" strokeWidth={2} fill="url(#grad-manual)" name="Manual" />
+              <Area type="monotone" dataKey="paralex" stroke="#10b981" strokeWidth={2} fill="url(#grad-paralex)" name="PARALEX" />
             </AreaChart>
           </ResponsiveContainer>
-          <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 12, padding: 10, background: c.surface, borderRadius: 9 }}>
+          <div style={{ display: 'flex', gap: 14, marginTop: 8, marginBottom: 4, fontSize: 11, color: c.textMuted, paddingLeft: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 10, height: 2, background: '#f87171' }} /> Manual baseline
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 10, height: 2, background: '#10b981' }} /> PARALEX execution
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 8, padding: 10, background: c.surface, borderRadius: 9 }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>MANUAL</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>326h</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>6.1h</div>
             </div>
             <div style={{ width: 1, background: c.border }} />
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>PARALEX</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>11h</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>0.8h</div>
             </div>
             <div style={{ width: 1, background: c.border }} />
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>SAVED</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: c.success }}>96.6%</div>
+              <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace' }}>REDUCTION</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: c.success }}>87%</div>
             </div>
           </div>
         </div>
@@ -321,9 +358,9 @@ export default function EvalDashboard() {
             </div>
 
             {[
-              { size: 'Small (3 paralegals)', cases: '60/mo', savings: '$176K', accent: '#3b82f6' },
-              { size: 'Mid (6 paralegals)', cases: '140/mo', savings: '$411K', accent: '#a855f7' },
-              { size: 'Large (12 paralegals)', cases: '300/mo', savings: '$880K', accent: '#10b981' },
+              { size: 'Small (3 paralegals)', cases: '60/mo', savings: '$107K', accent: '#3b82f6' },
+              { size: 'Mid (6 paralegals)', cases: '140/mo', savings: '$249K', accent: '#a855f7' },
+              { size: 'Large (12 paralegals)', cases: '300/mo', savings: '$534K', accent: '#10b981' },
             ].map((tier, i) => (
               <motion.div key={tier.size}
                 initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
@@ -345,13 +382,12 @@ export default function EvalDashboard() {
             <div style={{
               marginTop: 12, padding: '12px 14px',
               borderRadius: 10, background: c.surface,
-              border: `1px dashed ${c.accent}`,
+              border: `1px dashed ${c.borderStrong}`,
             }}>
-              <div style={{ fontSize: 10.5, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginBottom: 3 }}>200 FIRMS DEPLOYED</div>
-              <div style={{ fontSize: 22, fontWeight: 600, color: c.text, letterSpacing: '-0.02em' }}>
-                $88M–$176M
+              <div style={{ fontSize: 10.5, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginBottom: 5, letterSpacing: '0.06em' }}>MODEL ASSUMPTIONS</div>
+              <div style={{ fontSize: 11.5, color: c.textMuted, lineHeight: 1.6 }}>
+                5.3h saved per case × $28/hr fully-loaded paralegal cost × 12 months. Excludes filing-error cost avoidance and capacity expansion upside.
               </div>
-              <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>annual value created</div>
             </div>
           </div>
         </div>

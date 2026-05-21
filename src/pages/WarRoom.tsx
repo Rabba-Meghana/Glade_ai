@@ -278,7 +278,7 @@ export default function WarRoom() {
             </span>
             <div style={{ width: 3, height: 3, borderRadius: '50%', background: c.textSubtle }} />
             <span style={{ fontSize: 11, color: c.success, fontFamily: 'Geist Mono, monospace' }}>
-              4 agents online
+              5 agents online
             </span>
           </div>
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: 600, color: c.text, letterSpacing: '-0.02em' }}>
@@ -316,10 +316,10 @@ export default function WarRoom() {
 
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-        <StatCard label="Active cases" value={stats.active} change={12} icon={Activity} accent="#3b82f6" spark={[12, 14, 13, 16, 15, 18, 17, 19]} />
-        <StatCard label="Critical urgency" value={stats.critical} change={-8} icon={AlertTriangle} accent="#f87171" spark={[5, 4, 6, 5, 3, 4, 3, 2]} />
-        <StatCard label="Avg health score" value={`${stats.avgHealth}`} change={5} icon={TrendingUp} accent="#10b981" spark={[62, 65, 64, 68, 70, 71, 72, stats.avgHealth]} />
-        <StatCard label="Filing this week" value={stats.upcoming} change={2} icon={Clock} accent="#a78bfa" spark={[2, 3, 4, 3, 5, 4, 6, stats.upcoming]} />
+        <StatCard label="Active cases" value={stats.active} change={6} icon={Activity} accent="#3b82f6" spark={[14, 15, 14, 16, 15, 17, 16, stats.active]} />
+        <StatCard label="Critical urgency" value={stats.critical} change={-14} icon={AlertTriangle} accent="#f87171" spark={[4, 4, 5, 4, 3, 3, 2, stats.critical]} />
+        <StatCard label="Avg health score" value={`${stats.avgHealth}`} change={4} icon={TrendingUp} accent="#10b981" spark={[63, 65, 64, 66, 68, 67, 69, stats.avgHealth]} />
+        <StatCard label="Filing this week" value={stats.upcoming} change={9} icon={Clock} accent="#a78bfa" spark={[2, 3, 2, 3, 4, 3, 4, stats.upcoming]} />
       </div>
 
       {/* Main grid: cases table + activity feed */}
@@ -520,7 +520,7 @@ export default function WarRoom() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 11 }}>
               <div style={{ padding: 8, borderRadius: 7, background: c.surface, border: `1px solid ${c.border}` }}>
                 <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginBottom: 2 }}>RUNS/HR</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>247</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: c.text }}>14</div>
               </div>
               <div style={{ padding: 8, borderRadius: 7, background: c.surface, border: `1px solid ${c.border}` }}>
                 <div style={{ fontSize: 10, color: c.textSubtle, fontFamily: 'Geist Mono, monospace', marginBottom: 2 }}>AVG LATENCY</div>
